@@ -18,6 +18,7 @@ import {
   User,
   Users,
   UserCheck,
+  MessageCircle,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ const mainNavItems: NavItem[] = [
 ];
 
 const secondaryNavItems: NavItem[] = [
+  { label: "Messages", href: "/messages", icon: MessageCircle },
   { label: "Keepsakes", href: "/keepsakes", icon: Bookmark },
   { label: "Inner Circle", href: "/inner-circle", icon: Users },
   { label: "Requests", href: "/requests", icon: UserCheck },
@@ -205,11 +207,11 @@ export function AppLayout({ children, user }: AppLayoutProps) {
 
             <div className="flex shrink-0 items-center gap-2">
               <Link
-                href="/search"
+                href="/discover"
                 className="hidden h-11 items-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 text-sm font-medium text-[var(--app-muted)] shadow-sm transition hover:text-[var(--app-text)] sm:flex"
               >
                 <Search size={17} />
-                Search
+                Discover
               </Link>
 
               <ThemeToggle />

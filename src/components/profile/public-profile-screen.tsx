@@ -13,6 +13,7 @@ import { FollowProfileButton } from "@/components/profile/follow-profile-button"
 import { MemoryEngagementBar } from "@/components/memory/memory-engagement-bar";
 import type { FeedMemory } from "@/types/memory";
 import type { PublicProfilePageData } from "@/lib/profile/get-public-profile-page-data";
+import { StartConversationButton } from "@/components/messages/start-conversation-button";
 
 type PublicProfileScreenProps = {
   data: PublicProfilePageData;
@@ -131,13 +132,7 @@ export function PublicProfileScreen({ data }: PublicProfileScreenProps) {
                     accountVisibility={profile.accountVisibility}
                   />
 
-                  <button
-                    type="button"
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-5 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
-                  >
-                    Message
-                    <MessageCircle size={17} />
-                  </button>
+                  <StartConversationButton targetUserId={profile.id} />
                 </>
               )}
             </div>
