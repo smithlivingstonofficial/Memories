@@ -7,8 +7,10 @@ import {
   ArrowRight,
   Camera,
   CheckCircle2,
+  Globe2,
   ImagePlus,
   Loader2,
+  LockKeyhole,
   UserRound,
 } from "lucide-react";
 import {
@@ -25,6 +27,7 @@ type EditProfileScreenProps = {
     bio: string | null;
     avatarUrl: string | null;
     coverUrl: string | null;
+    accountVisibility: "public" | "private";
   };
 };
 
@@ -50,6 +53,9 @@ export function EditProfileScreen({ initialProfile }: EditProfileScreenProps) {
   const [fullName, setFullName] = useState(initialProfile.fullName);
   const [username, setUsername] = useState(initialProfile.username);
   const [bio, setBio] = useState(initialProfile.bio ?? "");
+  const [accountVisibility, setAccountVisibility] = useState<
+    "public" | "private"
+  >(initialProfile.accountVisibility);
 
   const [avatarAsset, setAvatarAsset] = useState<UploadedProfileAsset | null>(
     null
@@ -148,7 +154,8 @@ export function EditProfileScreen({ initialProfile }: EditProfileScreenProps) {
         </h1>
 
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--app-muted)]">
-          Update your profile photo, cover, name, username, and short bio.
+          Update your profile photo, cover, name, username, bio, and account
+          privacy.
         </p>
       </section>
 
@@ -162,6 +169,11 @@ export function EditProfileScreen({ initialProfile }: EditProfileScreenProps) {
           type="hidden"
           name="coverAssetId"
           value={coverAsset?.assetId ?? ""}
+        />
+        <input
+          type="hidden"
+          name="accountVisibility"
+          value={accountVisibility}
         />
 
         <section className="mem-card overflow-hidden rounded-[2rem]">
@@ -323,6 +335,55 @@ export function EditProfileScreen({ initialProfile }: EditProfileScreenProps) {
                 {bio.length}/180
               </p>
             </div>
+          </div>
+
+          <div className="mt-5">
+            <label className="mb-3 block text-sm font-semibold text-[var(--app-text)]">
+              Account privacy
+            </label>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setAccountVisibility("public")}
+                className={
+                  accountVisibility === "public"
+                    ? "rounded-[1.4rem] border border-[var(--app-accent)] bg-[var(--app-soft)] p-4 text-left text-[var(--app-accent)]"
+                    : "rounded-[1.4rem] border border-[var(--app-border)] bg-[var(--app-surface-soft)] p-4 text-left text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
+                }
+              >
+                <div className="mb-3 flex size-10 items-center justify-center rounded-2xl bg-[var(--app-surface-strong)]">
+                  <Globe2 size={18} />
+                </div>
+
+                <p className="text-sm font-semibold">Public account</p>
+                <p className="mt-1 text-xs leading-5 opacity-75">
+                  People can view your public profile and public memories.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAccountVisibility("private")}
+                className={
+                  accountVisibility === "private"
+                    ? "rounded-[1.4rem] border border-[var(--app-accent)] bg-[var(--app-soft)] p-4 text-left text-[var(--app-accent)]"
+                    : "rounded-[1.4rem] border border-[var(--app-border)] bg-[var(--app-surface-soft)] p-4 text-left text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
+                }
+              >
+                <div className="mb-3 flex size-10 items-center justify-center rounded-2xl bg-[var(--app-surface-strong)]">
+                  <LockKeyhole size={18} />
+                </div>
+
+                <p className="text-sm font-semibold">Private account</p>
+                <p className="mt-1 text-xs leading-5 opacity-75">
+                  People can see your basic profile, but your memories stay
+                  hidden.
+                </p>
+              </button>
+            </div>
+
+            <FieldError message={state.errors?.accountVisibility?.[0]} />
           </div>
 
           {state.message && (

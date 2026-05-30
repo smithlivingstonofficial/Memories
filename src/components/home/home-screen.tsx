@@ -143,18 +143,21 @@ function MemoryCard({
     <article className="mem-card overflow-hidden rounded-[2rem]">
       <div className="p-5">
         <div className="mb-4 flex items-center justify-between">
-          <div className="flex min-w-0 items-center gap-3">
+          <Link
+            href={`/u/${memory.author.username}`}
+            className="flex min-w-0 items-center gap-3"
+          >
             <AuthorAvatar memory={memory} />
 
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-[var(--app-text)]">
+                <p className="truncate text-sm font-semibold text-[var(--app-text)] transition hover:text-[var(--app-accent)]">
                 {memory.author.fullName}
-              </p>
-              <p className="truncate text-xs text-[var(--app-muted)]">
+                </p>
+                <p className="truncate text-xs text-[var(--app-muted)]">
                 @{memory.author.username} • {formatDate(memory.createdAt)}
-              </p>
+                </p>
             </div>
-          </div>
+          </Link>
 
           <div className="flex shrink-0 items-center gap-2">
             {canDelete && (

@@ -14,11 +14,15 @@ export type UpdateProfileState = {
     bio?: string[];
     avatarAssetId?: string[];
     coverAssetId?: string[];
+    accountVisibility?: string[];
   };
 };
 
+const AccountVisibilitySchema = z.enum(["public", "private"]);
+
 const optionalAssetId = z.preprocess((value) => {
   if (typeof value !== "string") return null;
+
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 }, z.string().uuid().nullable());
@@ -50,7 +54,12 @@ const UpdateProfileSchema = z.object({
 
   avatarAssetId: optionalAssetId,
   coverAssetId: optionalAssetId,
+  accountVisibility: AccountVisibilitySchema,
 });
+
+type SupabaseClient = Awaited<
+  ReturnType<typeof import("@/lib/supabase/server").createClient>
+>;
 
 type VerifiedAsset = {
   id: string;
@@ -64,9 +73,7 @@ async function verifyProfileAsset({
   assetId,
   purpose,
 }: {
-  supabase: Awaited<
-    ReturnType<typeof import("@/lib/supabase/server").createClient>
-  >;
+  supabase: SupabaseClient;
   userId: string;
   assetId: string | null;
   purpose: "profile_avatar" | "profile_cover";
@@ -115,6 +122,7 @@ export async function updateProfileAction(
     bio: formData.get("bio"),
     avatarAssetId: formData.get("avatarAssetId"),
     coverAssetId: formData.get("coverAssetId"),
+    accountVisibility: formData.get("accountVisibility"),
   });
 
   if (!validatedFields.success) {
@@ -124,8 +132,14 @@ export async function updateProfileAction(
     };
   }
 
-  const { fullName, username, bio, avatarAssetId, coverAssetId } =
-    validatedFields.data;
+  const {
+    fullName,
+    username,
+    bio,
+    avatarAssetId,
+    coverAssetId,
+    accountVisibility,
+  } = validatedFields.data;
 
   const supabase = await createClient();
 
@@ -145,18 +159,6 @@ export async function updateProfileAction(
     .select("avatar_asset_id, cover_asset_id")
     .eq("id", user.id)
     .maybeSingle();
-
-  const oldAvatarAssetId =
-    existingPublicProfile?.avatar_asset_id &&
-    existingPublicProfile.avatar_asset_id !== avatarAssetId
-      ? existingPublicProfile.avatar_asset_id
-      : null;
-
-  const oldCoverAssetId =
-    existingPublicProfile?.cover_asset_id &&
-    existingPublicProfile.cover_asset_id !== coverAssetId
-      ? existingPublicProfile.cover_asset_id
-      : null;
 
   const { data: usernameOwner, error: usernameError } = await supabase
     .from("public_profiles")
@@ -206,6 +208,20 @@ export async function updateProfileAction(
     };
   }
 
+  const oldAvatarAssetId =
+    avatarAsset &&
+    existingPublicProfile?.avatar_asset_id &&
+    existingPublicProfile.avatar_asset_id !== avatarAsset.id
+      ? existingPublicProfile.avatar_asset_id
+      : null;
+
+  const oldCoverAssetId =
+    coverAsset &&
+    existingPublicProfile?.cover_asset_id &&
+    existingPublicProfile.cover_asset_id !== coverAsset.id
+      ? existingPublicProfile.cover_asset_id
+      : null;
+
   const privateProfileUpdate: Record<string, unknown> = {
     username,
     full_name: fullName,
@@ -233,6 +249,7 @@ export async function updateProfileAction(
     username,
     full_name: fullName,
     bio,
+    account_visibility: accountVisibility,
     updated_at: new Date().toISOString(),
   };
 

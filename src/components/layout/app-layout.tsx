@@ -17,6 +17,7 @@ import {
   Sparkles,
   User,
   Users,
+  UserCheck,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,7 @@ const mainNavItems: NavItem[] = [
 const secondaryNavItems: NavItem[] = [
   { label: "Keepsakes", href: "/keepsakes", icon: Bookmark },
   { label: "Inner Circle", href: "/inner-circle", icon: Users },
+  { label: "Requests", href: "/requests", icon: UserCheck },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

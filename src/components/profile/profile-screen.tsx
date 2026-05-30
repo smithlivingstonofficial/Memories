@@ -72,6 +72,12 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
                   @{profile.username}
                 </p>
 
+                <span className="mt-3 inline-flex rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
+                  {profile.accountVisibility === "private"
+                    ? "Private account"
+                    : "Public account"}
+                </span>
+
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--app-muted)]">
                   {profile.bio ||
                     "No bio added yet. Share a short line about your memories, life, or creative world."}
@@ -79,13 +85,22 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
               </div>
             </div>
 
-            <Link
-              href="/create"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(99,102,241,0.25)] transition hover:bg-[var(--app-accent-hover)]"
-            >
-              Create
-              <Sparkles size={17} />
-            </Link>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link
+                href={`/u/${profile.username}`}
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-5 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
+              >
+                Public profile
+              </Link>
+
+              <Link
+                href="/create"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(99,102,241,0.25)] transition hover:bg-[var(--app-accent-hover)]"
+              >
+                Create
+                <Sparkles size={17} />
+              </Link>
+            </div>
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -169,12 +184,12 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
 
           <div className="mem-card rounded-[2rem] p-5">
             <h3 className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-              Profile foundation
+              Social foundation
             </h3>
 
             <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">
-              Next we will add edit profile, public/private account, public
-              profile route, follows, and social discovery.
+              Next we will add follow requests, social discovery, likes,
+              reflections, messages, and Moments.
             </p>
           </div>
         </aside>

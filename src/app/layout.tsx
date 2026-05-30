@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Plus_Jakarta_Sans, Sora } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import "./globals.css";
@@ -30,6 +31,7 @@ const themeScript = `
     document.documentElement.style.colorScheme = theme;
   } catch (e) {
     document.documentElement.setAttribute("data-theme", "light");
+    document.documentElement.style.colorScheme = "light";
   }
 })();
 `;
@@ -41,11 +43,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-theme="light" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
-
       <body className={`${jakarta.variable} ${sora.variable} antialiased`}>
+        <Script
+          id="memories-theme-script"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: themeScript }}
+        />
+
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

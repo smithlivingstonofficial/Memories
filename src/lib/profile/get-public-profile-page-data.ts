@@ -1,5 +1,6 @@
 import "server-only";
 
+import { notFound } from "next/navigation";
 import { createSignedReadUrl } from "@/lib/r2";
 import type { FeedMemory, FeedMemoryMedia } from "@/types/memory";
 
@@ -8,6 +9,8 @@ type SupabaseClient = Awaited<
 >;
 
 type AccountVisibility = "public" | "private";
+
+type FollowStatus = "self" | "not_following" | "requested" | "following";
 
 type PublicProfileRow = {
   id: string;
@@ -20,6 +23,10 @@ type PublicProfileRow = {
   cover_asset_id: string | null;
   is_searchable: boolean;
   account_visibility: AccountVisibility | null;
+};
+
+type FollowRow = {
+  status: "pending" | "accepted" | "blocked";
 };
 
 type MemoryRow = {
@@ -50,7 +57,7 @@ type MemoryMediaRow = {
   asset: MediaAssetRow | MediaAssetRow[] | null;
 };
 
-export type ProfilePageData = {
+export type PublicProfilePageData = {
   profile: {
     id: string;
     username: string;
@@ -61,10 +68,15 @@ export type ProfilePageData = {
     isSearchable: boolean;
     accountVisibility: AccountVisibility;
   };
+  viewer: {
+    id: string;
+    isOwner: boolean;
+    followStatus: FollowStatus;
+    canViewProfileMemories: boolean;
+  };
   stats: {
-    memories: number;
-    vault: number;
-    media: number;
+    publicMemories: number;
+    publicMedia: number;
   };
   memories: FeedMemory[];
 };
@@ -95,77 +107,114 @@ async function resolveAssetUrl(
   return null;
 }
 
-export async function getProfilePageData({
+export async function getPublicProfilePageData({
   supabase,
-  userId,
-  fallbackProfile,
+  username,
+  viewerId,
 }: {
   supabase: SupabaseClient;
-  userId: string;
-  fallbackProfile: {
-    username: string;
-    fullName: string;
-    avatarUrl: string | null;
-  };
-}): Promise<ProfilePageData> {
-  const { data: publicProfile } = await supabase
+  username: string;
+  viewerId: string;
+}): Promise<PublicProfilePageData> {
+  const cleanUsername = username.trim().toLowerCase();
+
+  const { data: publicProfile, error: profileError } = await supabase
     .from("public_profiles")
     .select(
       "id, username, full_name, bio, avatar_url, cover_url, avatar_asset_id, cover_asset_id, is_searchable, account_visibility"
     )
-    .eq("id", userId)
+    .eq("username", cleanUsername)
     .maybeSingle();
 
-  const profileRow = publicProfile as PublicProfileRow | null;
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+
+  if (!publicProfile) {
+    notFound();
+  }
+
+  const profileRow = publicProfile as PublicProfileRow;
 
   const avatarUrl = await resolveAssetUrl(
     supabase,
-    profileRow?.avatar_asset_id ?? null,
-    profileRow?.avatar_url ?? fallbackProfile.avatarUrl
+    profileRow.avatar_asset_id,
+    profileRow.avatar_url
   );
 
   const coverUrl = await resolveAssetUrl(
     supabase,
-    profileRow?.cover_asset_id ?? null,
-    profileRow?.cover_url ?? null
+    profileRow.cover_asset_id,
+    profileRow.cover_url
   );
 
+  const isOwner = profileRow.id === viewerId;
+
   const profile = {
-    id: userId,
-    username: profileRow?.username ?? fallbackProfile.username,
-    fullName: profileRow?.full_name ?? fallbackProfile.fullName,
-    bio: profileRow?.bio ?? null,
+    id: profileRow.id,
+    username: profileRow.username,
+    fullName: profileRow.full_name,
+    bio: profileRow.bio,
     avatarUrl,
     coverUrl,
-    isSearchable: profileRow?.is_searchable ?? true,
-    accountVisibility: profileRow?.account_visibility ?? "public",
+    isSearchable: profileRow.is_searchable,
+    accountVisibility: profileRow.account_visibility ?? "public",
   };
 
-  const { count: memoriesCount } = await supabase
+  let followStatus: FollowStatus = isOwner ? "self" : "not_following";
+
+  if (!isOwner) {
+    const { data: followRow } = await supabase
+      .from("user_follows")
+      .select("status")
+      .eq("follower_id", viewerId)
+      .eq("following_id", profile.id)
+      .maybeSingle();
+
+    const typedFollowRow = followRow as FollowRow | null;
+
+    if (typedFollowRow?.status === "accepted") {
+      followStatus = "following";
+    } else if (typedFollowRow?.status === "pending") {
+      followStatus = "requested";
+    }
+  }
+
+  const canViewProfileMemories =
+    isOwner ||
+    profile.accountVisibility === "public" ||
+    followStatus === "following";
+
+  if (!canViewProfileMemories) {
+    return {
+      profile,
+      viewer: {
+        id: viewerId,
+        isOwner,
+        followStatus,
+        canViewProfileMemories,
+      },
+      stats: {
+        publicMemories: 0,
+        publicMedia: 0,
+      },
+      memories: [],
+    };
+  }
+
+  const { count: publicMemoriesCount } = await supabase
     .from("memories")
     .select("id", { count: "exact", head: true })
-    .eq("owner_id", userId)
-    .neq("privacy", "vault");
+    .eq("owner_id", profile.id)
+    .eq("privacy", "public");
 
-  const { count: vaultCount } = await supabase
-    .from("memories")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", userId)
-    .eq("privacy", "vault");
-
-  const { count: mediaCount } = await supabase
-    .from("media_assets")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", userId)
-    .eq("upload_status", "uploaded");
-
-  const { data: memories, error: memoriesError } = await supabase
+  const { data: publicMemories, error: memoriesError } = await supabase
     .from("memories")
     .select(
       "id, owner_id, title, content, mood, moods, privacy, location_name, tags, created_at"
     )
-    .eq("owner_id", userId)
-    .neq("privacy", "vault")
+    .eq("owner_id", profile.id)
+    .eq("privacy", "public")
     .order("created_at", { ascending: false })
     .limit(24);
 
@@ -173,15 +222,20 @@ export async function getProfilePageData({
     throw new Error(memoriesError.message);
   }
 
-  const memoryRows = (memories ?? []) as MemoryRow[];
+  const memoryRows = (publicMemories ?? []) as MemoryRow[];
 
   if (memoryRows.length === 0) {
     return {
       profile,
+      viewer: {
+        id: viewerId,
+        isOwner,
+        followStatus,
+        canViewProfileMemories,
+      },
       stats: {
-        memories: memoriesCount ?? 0,
-        vault: vaultCount ?? 0,
-        media: mediaCount ?? 0,
+        publicMemories: publicMemoriesCount ?? 0,
+        publicMedia: 0,
       },
       memories: [],
     };
@@ -254,7 +308,7 @@ export async function getProfilePageData({
       tags: memory.tags ?? [],
       createdAt: memory.created_at,
       author: {
-        id: userId,
+        id: profile.id,
         fullName: profile.fullName,
         username: profile.username,
         avatarUrl: profile.avatarUrl,
@@ -263,12 +317,22 @@ export async function getProfilePageData({
     };
   }) satisfies FeedMemory[];
 
+  const publicMediaCount = feedMemories.reduce(
+    (total, memory) => total + memory.media.length,
+    0
+  );
+
   return {
     profile,
+    viewer: {
+      id: viewerId,
+      isOwner,
+      followStatus,
+      canViewProfileMemories,
+    },
     stats: {
-      memories: memoriesCount ?? 0,
-      vault: vaultCount ?? 0,
-      media: mediaCount ?? 0,
+      publicMemories: publicMemoriesCount ?? 0,
+      publicMedia: publicMediaCount,
     },
     memories: feedMemories,
   };

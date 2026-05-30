@@ -52,6 +52,7 @@ export default async function EditProfilePage() {
           bio: data.profile.bio,
           avatarUrl: data.profile.avatarUrl,
           coverUrl: data.profile.coverUrl,
+          accountVisibility: data.profile.accountVisibility,
         }}
       />
     </AppLayout>
