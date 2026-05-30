@@ -1,8 +1,10 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { deleteMediaAssetsCompletely } from "@/lib/media/delete-media";
 import { normalizeMoods } from "@/lib/moods";
 
 export type CreateMemoryState = {
@@ -386,4 +388,111 @@ export async function createVaultEntryAction(
   }
 
   redirect("/vault");
+}
+
+/* -------------------------------------------------------------------------- */
+/* DELETE MEMORY / VAULT ENTRY ACTION                                         */
+/* -------------------------------------------------------------------------- */
+
+export async function deleteMemoryAction(memoryId: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return {
+      success: false,
+      message: "Your session expired. Please login again.",
+    };
+  }
+
+  const { data: memory, error: memoryError } = await supabase
+    .from("memories")
+    .select("id, owner_id, privacy")
+    .eq("id", memoryId)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (memoryError) {
+    return {
+      success: false,
+      message: memoryError.message,
+    };
+  }
+
+  if (!memory) {
+    return {
+      success: false,
+      message: "Memory not found or you do not have permission to delete it.",
+    };
+  }
+
+  const { data: mediaLinks, error: mediaLinksError } = await supabase
+    .from("memory_media")
+    .select("asset_id")
+    .eq("memory_id", memoryId)
+    .eq("owner_id", user.id);
+
+  if (mediaLinksError) {
+    return {
+      success: false,
+      message: mediaLinksError.message,
+    };
+  }
+
+  const assetIds = ((mediaLinks ?? []) as { asset_id: string | null }[])
+    .map((item) => item.asset_id)
+    .filter((id): id is string => Boolean(id));
+
+  const { error: deleteLinksError } = await supabase
+    .from("memory_media")
+    .delete()
+    .eq("memory_id", memoryId)
+    .eq("owner_id", user.id);
+
+  if (deleteLinksError) {
+    return {
+      success: false,
+      message: deleteLinksError.message,
+    };
+  }
+
+  const { error: deleteMemoryError } = await supabase
+    .from("memories")
+    .delete()
+    .eq("id", memoryId)
+    .eq("owner_id", user.id);
+
+  if (deleteMemoryError) {
+    return {
+      success: false,
+      message: deleteMemoryError.message,
+    };
+  }
+
+  if (assetIds.length > 0) {
+    await deleteMediaAssetsCompletely({
+      supabase,
+      userId: user.id,
+      assetIds,
+    });
+  }
+
+  revalidatePath("/home");
+  revalidatePath("/profile");
+  revalidatePath("/vault");
+
+  return {
+    success: true,
+    message:
+      memory.privacy === "vault"
+        ? "Vault entry and attached media deleted."
+        : "Memory and attached media deleted.",
+  };
 }

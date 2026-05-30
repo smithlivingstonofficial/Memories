@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import {
   ArrowRight,
   Eye,
@@ -8,6 +9,7 @@ import {
   PenLine,
   ShieldCheck,
 } from "lucide-react";
+import { DeleteMemoryButton } from "@/components/memory/delete-memory-button";
 import type { FeedMemory } from "@/types/memory";
 
 type VaultScreenProps = {
@@ -37,7 +39,7 @@ export function VaultScreen({ entries }: VaultScreenProps) {
 
         <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div>
-            <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#EEF2FF] px-3 py-1 text-xs font-semibold text-[#6366F1]">
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
               <LockKeyhole size={14} />
               Private Vault
             </p>
@@ -54,7 +56,7 @@ export function VaultScreen({ entries }: VaultScreenProps) {
 
           <Link
             href="/create/vault"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#6366F1] px-5 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(99,102,241,0.25)] transition hover:bg-[#4F46E5]"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(99,102,241,0.25)] transition hover:bg-[var(--app-accent-hover)]"
           >
             Write in Vault
             <PenLine size={17} />
@@ -105,7 +107,7 @@ function VaultEntryCard({ entry }: { entry: FeedMemory }) {
   return (
     <article className="mem-card overflow-hidden rounded-[2rem] p-4">
       {firstMedia ? (
-        <div className="mb-4 overflow-hidden rounded-[1.5rem] bg-[var(--vault-private-card)]">
+        <div className="mb-4 overflow-hidden rounded-[1.5rem] bg-[var(--vault-private)]">
           {firstMedia.mediaKind === "image" ? (
             <img
               src={firstMedia.url}
@@ -125,19 +127,22 @@ function VaultEntryCard({ entry }: { entry: FeedMemory }) {
           )}
         </div>
       ) : (
-        <div className="mb-4 flex h-56 items-center justify-center rounded-[1.5rem] bg-gradient-to-br from-[#EEF2FF] via-white to-[#FFE4E6]">
-          <LockKeyhole className="text-[#6366F1]" />
+        <div className="mb-4 flex h-56 items-center justify-center rounded-[1.5rem] [background:var(--vault-hero)]">
+          <LockKeyhole className="text-[var(--app-accent)]" />
         </div>
       )}
 
       <div className="mb-3 flex flex-wrap gap-2">
-        {entry.mood && (
-          <span className="rounded-full bg-[#EEF2FF] px-3 py-1 text-xs font-medium text-[#6366F1]">
-            {entry.mood}
+        {entry.moods.map((mood) => (
+          <span
+            key={mood}
+            className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-medium text-[var(--app-accent)]"
+          >
+            {mood}
           </span>
-        )}
+        ))}
 
-        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[#6366F1]">
+        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
           <LockKeyhole size={12} />
           Vault
         </span>
@@ -161,12 +166,16 @@ function VaultEntryCard({ entry }: { entry: FeedMemory }) {
           Only you
         </p>
 
-        <Link
-          href={`/vault/${entry.id}`}
-          className="text-xs font-semibold text-[#6366F1]"
-        >
-          Open
-        </Link>
+        <div className="flex items-center gap-2">
+          <DeleteMemoryButton memoryId={entry.id} type="vault" />
+
+          <Link
+            href={`/vault/${entry.id}`}
+            className="text-xs font-semibold text-[var(--app-accent)]"
+          >
+            Open
+          </Link>
+        </div>
       </div>
     </article>
   );
@@ -175,7 +184,7 @@ function VaultEntryCard({ entry }: { entry: FeedMemory }) {
 function EmptyVault() {
   return (
     <section className="mem-card rounded-[2rem] p-8 text-center">
-      <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-[1.4rem] bg-[#EEF2FF] text-[#6366F1]">
+      <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-[1.4rem] bg-[var(--app-soft)] text-[var(--app-accent)]">
         <LockKeyhole size={24} />
       </div>
 
@@ -190,7 +199,7 @@ function EmptyVault() {
 
       <Link
         href="/create/vault"
-        className="mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#6366F1] px-5 text-sm font-semibold text-white transition hover:bg-[#4F46E5]"
+        className="mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--app-accent-hover)]"
       >
         Write first Vault entry
         <ArrowRight size={17} />
@@ -218,7 +227,7 @@ function InfoCard({
   subtitle,
   text,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
   subtitle: string;
   text: string;
@@ -226,7 +235,7 @@ function InfoCard({
   return (
     <div className="mem-card rounded-[2rem] p-5">
       <div className="mb-3 flex items-center gap-3">
-        <div className="flex size-10 items-center justify-center rounded-2xl bg-[#EEF2FF] text-[#6366F1]">
+        <div className="flex size-10 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
           {icon}
         </div>
 

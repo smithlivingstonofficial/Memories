@@ -9,6 +9,7 @@ import {
   Plus,
   Sparkles,
 } from "lucide-react";
+import { DeleteMemoryButton } from "@/components/memory/delete-memory-button";
 import type { FeedMemory } from "@/types/memory";
 
 const moments = [
@@ -23,9 +24,10 @@ const moments = [
 
 type HomeScreenProps = {
   memories: FeedMemory[];
+  currentUserId: string;
 };
 
-export function HomeScreen({ memories }: HomeScreenProps) {
+export function HomeScreen({ memories, currentUserId }: HomeScreenProps) {
   return (
     <div className="mx-auto grid w-full max-w-[1500px] gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
       <div className="min-w-0 space-y-5">
@@ -69,7 +71,11 @@ export function HomeScreen({ memories }: HomeScreenProps) {
         ) : (
           <section className="grid gap-5 lg:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
             {memories.map((memory) => (
-              <MemoryCard key={memory.id} memory={memory} />
+              <MemoryCard
+                key={memory.id}
+                memory={memory}
+                canDelete={memory.author.id === currentUserId}
+              />
             ))}
           </section>
         )}
@@ -124,7 +130,13 @@ export function HomeScreen({ memories }: HomeScreenProps) {
   );
 }
 
-function MemoryCard({ memory }: { memory: FeedMemory }) {
+function MemoryCard({
+  memory,
+  canDelete,
+}: {
+  memory: FeedMemory;
+  canDelete: boolean;
+}) {
   const firstMedia = memory.media[0];
 
   return (
@@ -144,9 +156,15 @@ function MemoryCard({ memory }: { memory: FeedMemory }) {
             </div>
           </div>
 
-          <button className="shrink-0 text-[var(--app-muted)] transition hover:text-[var(--app-text)]">
-            <MoreHorizontal size={19} />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {canDelete && (
+              <DeleteMemoryButton memoryId={memory.id} type="memory" />
+            )}
+
+            <button className="text-[var(--app-muted)] transition hover:text-[var(--app-text)]">
+              <MoreHorizontal size={19} />
+            </button>
+          </div>
         </div>
 
         {firstMedia ? (
@@ -176,11 +194,14 @@ function MemoryCard({ memory }: { memory: FeedMemory }) {
         )}
 
         <div className="mb-3 flex flex-wrap gap-2">
-          {memory.mood && (
-            <span className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-medium text-[var(--app-accent)]">
-              {memory.mood}
+          {memory.moods.map((mood) => (
+            <span
+              key={mood}
+              className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-medium text-[var(--app-accent)]"
+            >
+              {mood}
             </span>
-          )}
+          ))}
 
           <span className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-3 py-1 text-xs font-medium text-[var(--app-muted)]">
             {formatPrivacy(memory.privacy)}

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { deleteMediaAssetsCompletely } from "@/lib/media/delete-media";
 
 export type UpdateProfileState = {
   message?: string;
@@ -77,7 +78,6 @@ async function verifyProfileAsset({
     .select("id, public_url, object_key")
     .eq("id", assetId)
     .eq("owner_id", userId)
-    .eq("purpose", purpose)
     .eq("upload_status", "uploaded")
     .maybeSingle();
 
@@ -92,8 +92,8 @@ async function verifyProfileAsset({
   const { error: updateError } = await supabase
     .from("media_assets")
     .update({
-      visibility: "public",
       purpose,
+      visibility: "public",
     })
     .eq("id", assetId)
     .eq("owner_id", userId);
@@ -139,6 +139,24 @@ export async function updateProfileAction(
       message: "Your session expired. Please login again.",
     };
   }
+
+  const { data: existingPublicProfile } = await supabase
+    .from("public_profiles")
+    .select("avatar_asset_id, cover_asset_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const oldAvatarAssetId =
+    existingPublicProfile?.avatar_asset_id &&
+    existingPublicProfile.avatar_asset_id !== avatarAssetId
+      ? existingPublicProfile.avatar_asset_id
+      : null;
+
+  const oldCoverAssetId =
+    existingPublicProfile?.cover_asset_id &&
+    existingPublicProfile.cover_asset_id !== coverAssetId
+      ? existingPublicProfile.cover_asset_id
+      : null;
 
   const { data: usernameOwner, error: usernameError } = await supabase
     .from("public_profiles")
@@ -195,7 +213,7 @@ export async function updateProfileAction(
     updated_at: new Date().toISOString(),
   };
 
-  if (avatarAsset?.public_url) {
+  if (avatarAsset) {
     privateProfileUpdate.avatar_url = avatarAsset.public_url;
   }
 
@@ -239,6 +257,18 @@ export async function updateProfileAction(
       message:
         publicProfileError.message || "Unable to update public profile.",
     };
+  }
+
+  const cleanupAssetIds = [oldAvatarAssetId, oldCoverAssetId].filter(
+    (id): id is string => Boolean(id)
+  );
+
+  if (cleanupAssetIds.length > 0) {
+    await deleteMediaAssetsCompletely({
+      supabase,
+      userId: user.id,
+      assetIds: cleanupAssetIds,
+    });
   }
 
   redirect("/profile");

@@ -9,6 +9,7 @@ import {
   Settings,
   Sparkles,
 } from "lucide-react";
+import { DeleteMemoryButton } from "@/components/memory/delete-memory-button";
 import type { FeedMemory } from "@/types/memory";
 import type { ProfilePageData } from "@/lib/profile/get-profile-page-data";
 
@@ -231,7 +232,11 @@ function ProfileMemoryCard({ memory }: { memory: FeedMemory }) {
   const firstMedia = memory.media[0];
 
   return (
-    <article className="mem-card overflow-hidden rounded-[2rem]">
+    <article className="mem-card relative overflow-hidden rounded-[2rem]">
+      <div className="absolute right-3 top-3 z-10">
+        <DeleteMemoryButton memoryId={memory.id} type="memory" />
+      </div>
+
       {firstMedia ? (
         <div className="h-64 overflow-hidden bg-[var(--app-surface-soft)]">
           {firstMedia.mediaKind === "image" ? (

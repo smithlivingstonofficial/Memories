@@ -37,7 +37,8 @@ export default async function HomePage() {
         avatarUrl: profile.avatar_url,
       }}
     >
-      <HomeScreen memories={memories} />
+
+      <HomeScreen memories={memories} currentUserId={user.id} />
     </AppLayout>
   );
 }
