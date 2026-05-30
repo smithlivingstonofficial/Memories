@@ -1,26 +1,352 @@
 @import "tailwindcss";
 
+/* -------------------------------------------------------------------------- */
+/* BASE FALLBACK TOKENS                                                       */
+/* -------------------------------------------------------------------------- */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+
+  --muted: #64748b;
+  --accent: #6366f1;
+  --accent-soft: #eef2ff;
+
+  --rose-soft: #ffe4e6;
+  --vault-dark: #0f172a;
+  --safe-green: #10b981;
+  --inner-gold: #f59e0b;
+
+  --card: rgba(255, 255, 255, 0.78);
+  --border-soft: rgba(148, 163, 184, 0.22);
+  --shadow-soft: 0 24px 80px rgba(15, 23, 42, 0.08);
+
+  --app-bg: #f8fafc;
+  --app-text: #0f172a;
+  --app-heading: #020617;
+  --app-muted: #64748b;
+  --app-faint: #94a3b8;
+
+  --app-border: rgba(226, 232, 240, 0.78);
+  --app-surface: rgba(255, 255, 255, 0.76);
+  --app-surface-strong: rgba(255, 255, 255, 0.94);
+  --app-surface-soft: rgba(248, 250, 252, 0.86);
+
+  --app-soft: #eef2ff;
+  --app-accent: #6366f1;
+  --app-accent-hover: #4f46e5;
+
+  --app-shadow: rgba(15, 23, 42, 0.08);
+
+  --app-gradient:
+    radial-gradient(circle at 12% 8%, rgba(99, 102, 241, 0.1), transparent 30%),
+    radial-gradient(circle at 88% 88%, rgba(255, 228, 230, 0.66), transparent 34%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 48%, #f8fafc 100%);
+
+  --vault-hero:
+    radial-gradient(circle at 12% 0%, rgba(99, 102, 241, 0.16), transparent 30%),
+    radial-gradient(circle at 100% 100%, rgba(255, 228, 230, 0.7), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(238, 242, 255, 0.88));
+
+  --vault-private: rgba(248, 250, 252, 0.9);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* -------------------------------------------------------------------------- */
+/* LIGHT THEME                                                                */
+/* -------------------------------------------------------------------------- */
+
+html[data-theme="light"] {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+
+  --muted: #64748b;
+  --accent: #6366f1;
+  --accent-soft: #eef2ff;
+
+  --card: rgba(255, 255, 255, 0.78);
+  --border-soft: rgba(148, 163, 184, 0.22);
+  --shadow-soft: 0 24px 80px rgba(15, 23, 42, 0.08);
+
+  --app-bg: #f8fafc;
+  --app-text: #0f172a;
+  --app-heading: #020617;
+  --app-muted: #64748b;
+  --app-faint: #94a3b8;
+
+  --app-border: rgba(226, 232, 240, 0.78);
+  --app-surface: rgba(255, 255, 255, 0.76);
+  --app-surface-strong: rgba(255, 255, 255, 0.94);
+  --app-surface-soft: rgba(248, 250, 252, 0.86);
+
+  --app-soft: #eef2ff;
+  --app-accent: #6366f1;
+  --app-accent-hover: #4f46e5;
+
+  --app-shadow: rgba(15, 23, 42, 0.08);
+
+  --app-gradient:
+    radial-gradient(circle at 12% 8%, rgba(99, 102, 241, 0.1), transparent 30%),
+    radial-gradient(circle at 88% 88%, rgba(255, 228, 230, 0.66), transparent 34%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 48%, #f8fafc 100%);
+
+  --vault-hero:
+    radial-gradient(circle at 12% 0%, rgba(99, 102, 241, 0.16), transparent 30%),
+    radial-gradient(circle at 100% 100%, rgba(255, 228, 230, 0.7), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(238, 242, 255, 0.88));
+
+  --vault-private: rgba(248, 250, 252, 0.9);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* -------------------------------------------------------------------------- */
+/* DARK THEME                                                                 */
+/* -------------------------------------------------------------------------- */
+
+html[data-theme="dark"] {
+  --background: #070a13;
+  --foreground: #f8fafc;
+
+  --muted: #94a3b8;
+  --accent: #818cf8;
+  --accent-soft: rgba(99, 102, 241, 0.18);
+
+  --card: rgba(15, 23, 42, 0.74);
+  --border-soft: rgba(148, 163, 184, 0.18);
+  --shadow-soft: 0 24px 80px rgba(0, 0, 0, 0.28);
+
+  --app-bg: #070a13;
+  --app-text: #f8fafc;
+  --app-heading: #ffffff;
+  --app-muted: #94a3b8;
+  --app-faint: #64748b;
+
+  --app-border: rgba(148, 163, 184, 0.18);
+  --app-surface: rgba(15, 23, 42, 0.72);
+  --app-surface-strong: rgba(15, 23, 42, 0.92);
+  --app-surface-soft: rgba(30, 41, 59, 0.72);
+
+  --app-soft: rgba(99, 102, 241, 0.18);
+  --app-accent: #818cf8;
+  --app-accent-hover: #6366f1;
+
+  --app-shadow: rgba(0, 0, 0, 0.28);
+
+  --app-gradient:
+    radial-gradient(circle at 12% 8%, rgba(99, 102, 241, 0.16), transparent 30%),
+    radial-gradient(circle at 88% 88%, rgba(49, 46, 129, 0.55), transparent 34%),
+    linear-gradient(180deg, #070a13 0%, #0f172a 48%, #070a13 100%);
+
+  --vault-hero:
+    radial-gradient(circle at 12% 0%, rgba(99, 102, 241, 0.24), transparent 30%),
+    radial-gradient(circle at 100% 100%, rgba(49, 46, 129, 0.72), transparent 36%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.88));
+
+  --vault-private: rgba(15, 23, 42, 0.9);
+}
+
+/* -------------------------------------------------------------------------- */
+/* GLOBAL RESET                                                               */
+/* -------------------------------------------------------------------------- */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--app-bg);
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: var(--font-jakarta), system-ui, sans-serif;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.22);
+  color: var(--app-heading);
+}
+
+/* -------------------------------------------------------------------------- */
+/* THEME UTILITY CLASSES                                                      */
+/* -------------------------------------------------------------------------- */
+
+.mem-bg {
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+.mem-page-gradient {
+  background: var(--app-gradient);
+}
+
+.mem-card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
+  box-shadow: 0 24px 80px var(--app-shadow);
+  backdrop-filter: blur(24px);
+}
+
+.mem-card-strong {
+  background: var(--app-surface-strong);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
+  box-shadow: 0 24px 80px var(--app-shadow);
+  backdrop-filter: blur(24px);
+}
+
+.mem-soft {
+  background: var(--app-surface-soft);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
+}
+
+.mem-input {
+  background: var(--app-surface-strong);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
+}
+
+.mem-input::placeholder {
+  color: var(--app-faint);
+}
+
+.mem-text {
+  color: var(--app-text);
+}
+
+.mem-heading {
+  color: var(--app-heading);
+}
+
+.mem-muted {
+  color: var(--app-muted);
+}
+
+.mem-faint {
+  color: var(--app-faint);
+}
+
+.mem-accent {
+  color: var(--app-accent);
+}
+
+.mem-accent-bg {
+  background: var(--app-accent);
+  color: #ffffff;
+}
+
+.mem-accent-bg:hover {
+  background: var(--app-accent-hover);
+}
+
+/* -------------------------------------------------------------------------- */
+/* OLD UTILITY SUPPORT                                                        */
+/* -------------------------------------------------------------------------- */
+
+.memories-container {
+  width: min(1160px, calc(100% - 32px));
+  margin-inline: auto;
+}
+
+.glass {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 24px 80px var(--app-shadow);
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.font-brand {
+  font-family: var(--font-sora), var(--font-jakarta), system-ui, sans-serif;
+}
+
+.font-ui {
+  font-family: var(--font-jakarta), system-ui, sans-serif;
+}
+
+/* -------------------------------------------------------------------------- */
+/* SCROLLBAR                                                                  */
+/* -------------------------------------------------------------------------- */
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.55);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* -------------------------------------------------------------------------- */
+/* AUTOFILL FIX                                                               */
+/* -------------------------------------------------------------------------- */
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--app-text);
+  box-shadow: 0 0 0px 1000px var(--app-surface-strong) inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* -------------------------------------------------------------------------- */
+/* ACCESSIBILITY                                                              */
+/* -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
