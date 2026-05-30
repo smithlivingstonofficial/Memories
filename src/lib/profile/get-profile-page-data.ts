@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createSignedReadUrl } from "@/lib/r2";
+import { getMemoryEngagementMap } from "@/lib/memories/get-memory-engagements";
 import type { FeedMemory, FeedMemoryMedia } from "@/types/memory";
 
 type SupabaseClient = Awaited<
@@ -223,6 +224,12 @@ export async function getProfilePageData({
 
   const memoryIds = memoryRows.map((memory) => memory.id);
 
+  const engagementMap = await getMemoryEngagementMap({
+    supabase,
+    memoryIds,
+    viewerId: userId,
+  });
+
   const { data: memoryMediaRows } = await supabase
     .from("memory_media")
     .select(
@@ -294,6 +301,12 @@ export async function getProfilePageData({
         avatarUrl: profile.avatarUrl,
       },
       media: mediaByMemoryId.get(memory.id) ?? [],
+      engagement: engagementMap.get(memory.id) ?? {
+        likeCount: 0,
+        reflectionCount: 0,
+        viewerHasLiked: false,
+        canEngage: memory.privacy !== "vault",
+      },
     };
   }) satisfies FeedMemory[];
 

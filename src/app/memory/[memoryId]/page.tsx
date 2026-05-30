@@ -1,10 +1,20 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppLayout } from "@/components/layout/app-layout";
-import { HomeScreen } from "@/components/home/home-screen";
-import { getHomeFeed } from "@/lib/memories/get-home-feed";
+import { MemoryDetailScreen } from "@/components/memory/memory-detail-screen";
+import { getMemoryDetailData } from "@/lib/memories/get-memory-detail-data";
 
-export default async function HomePage() {
+type MemoryDetailPageProps = {
+  params: Promise<{
+    memoryId: string;
+  }>;
+};
+
+export default async function MemoryDetailPage({
+  params,
+}: MemoryDetailPageProps) {
+  const { memoryId } = await params;
+
   const supabase = await createClient();
 
   const {
@@ -25,21 +35,21 @@ export default async function HomePage() {
     redirect("/complete-profile");
   }
 
-  const fullName = profile.full_name ?? "Memories User";
-  const username = profile.username ?? "memories_user";
-  const avatarUrl = profile.avatar_url ?? null;
-
-  const memories = await getHomeFeed(supabase, user.id);
+  const data = await getMemoryDetailData({
+    supabase,
+    memoryId,
+    viewerId: user.id,
+  });
 
   return (
     <AppLayout
       user={{
-        fullName,
-        username,
-        avatarUrl,
+        fullName: profile.full_name ?? "Memories User",
+        username: profile.username ?? "memories_user",
+        avatarUrl: profile.avatar_url ?? null,
       }}
     >
-      <HomeScreen memories={memories} currentUserId={user.id} />
+      <MemoryDetailScreen data={data} />
     </AppLayout>
   );
 }

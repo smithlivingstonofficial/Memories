@@ -10,6 +10,7 @@ import {
   PenLine,
 } from "lucide-react";
 import { FollowProfileButton } from "@/components/profile/follow-profile-button";
+import { MemoryEngagementBar } from "@/components/memory/memory-engagement-bar";
 import type { FeedMemory } from "@/types/memory";
 import type { PublicProfilePageData } from "@/lib/profile/get-public-profile-page-data";
 
@@ -256,11 +257,13 @@ function PublicMemoryCard({ memory }: { memory: FeedMemory }) {
       {firstMedia ? (
         <div className="h-64 overflow-hidden bg-[var(--app-surface-soft)]">
           {firstMedia.mediaKind === "image" ? (
-            <img
-              src={firstMedia.url}
-              alt={memory.title ?? "Memory media"}
-              className="h-full w-full object-cover"
-            />
+            <Link href={`/memory/${memory.id}`}>
+              <img
+                src={firstMedia.url}
+                alt={memory.title ?? "Memory media"}
+                className="h-full w-full object-cover transition duration-300 hover:scale-[1.02]"
+              />
+            </Link>
           ) : firstMedia.mediaKind === "video" ? (
             <video
               src={firstMedia.url}
@@ -268,15 +271,21 @@ function PublicMemoryCard({ memory }: { memory: FeedMemory }) {
               controls
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-[var(--app-accent)]">
+            <Link
+              href={`/memory/${memory.id}`}
+              className="flex h-full items-center justify-center text-[var(--app-accent)]"
+            >
               <ImagePlus />
-            </div>
+            </Link>
           )}
         </div>
       ) : (
-        <div className="flex h-64 items-center justify-center [background:var(--vault-hero)]">
+        <Link
+          href={`/memory/${memory.id}`}
+          className="flex h-64 items-center justify-center [background:var(--vault-hero)]"
+        >
           <ImagePlus className="text-[var(--app-accent)]" />
-        </div>
+        </Link>
       )}
 
       <div className="p-4">
@@ -299,9 +308,11 @@ function PublicMemoryCard({ memory }: { memory: FeedMemory }) {
           {formatDate(memory.createdAt)}
         </p>
 
-        <h3 className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-          {memory.title || "Untitled memory"}
-        </h3>
+        <Link href={`/memory/${memory.id}`}>
+          <h3 className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)] transition hover:text-[var(--app-accent)]">
+            {memory.title || "Untitled memory"}
+          </h3>
+        </Link>
 
         <p className="mt-2 line-clamp-4 text-sm leading-6 text-[var(--app-muted)]">
           {memory.content}
@@ -313,6 +324,14 @@ function PublicMemoryCard({ memory }: { memory: FeedMemory }) {
             {memory.locationName}
           </p>
         )}
+
+        <MemoryEngagementBar
+          memoryId={memory.id}
+          initialLikeCount={memory.engagement.likeCount}
+          initialReflectionCount={memory.engagement.reflectionCount}
+          initiallyLiked={memory.engagement.viewerHasLiked}
+          canEngage={memory.engagement.canEngage}
+        />
       </div>
     </article>
   );

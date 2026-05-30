@@ -22,4 +22,10 @@ export type FeedMemory = {
     avatarUrl: string | null;
   };
   media: FeedMemoryMedia[];
+  engagement: {
+    likeCount: number;
+    reflectionCount: number;
+    viewerHasLiked: boolean;
+    canEngage: boolean;
+  };
 };

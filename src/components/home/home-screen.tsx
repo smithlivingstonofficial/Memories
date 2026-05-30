@@ -1,15 +1,13 @@
 import Link from "next/link";
 import {
-  Bookmark,
-  Heart,
   ImagePlus,
   LockKeyhole,
-  MessageCircle,
   MoreHorizontal,
   Plus,
   Sparkles,
 } from "lucide-react";
 import { DeleteMemoryButton } from "@/components/memory/delete-memory-button";
+import { MemoryEngagementBar } from "@/components/memory/memory-engagement-bar";
 import type { FeedMemory } from "@/types/memory";
 
 const moments = [
@@ -150,12 +148,12 @@ function MemoryCard({
             <AuthorAvatar memory={memory} />
 
             <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[var(--app-text)] transition hover:text-[var(--app-accent)]">
+              <p className="truncate text-sm font-semibold text-[var(--app-text)] transition hover:text-[var(--app-accent)]">
                 {memory.author.fullName}
-                </p>
-                <p className="truncate text-xs text-[var(--app-muted)]">
+              </p>
+              <p className="truncate text-xs text-[var(--app-muted)]">
                 @{memory.author.username} • {formatDate(memory.createdAt)}
-                </p>
+              </p>
             </div>
           </Link>
 
@@ -173,11 +171,13 @@ function MemoryCard({
         {firstMedia ? (
           <div className="mb-4 overflow-hidden rounded-[1.6rem] bg-[var(--app-surface-soft)]">
             {firstMedia.mediaKind === "image" ? (
-              <img
-                src={firstMedia.url}
-                alt={memory.title ?? "Memory media"}
-                className="h-[280px] w-full object-cover sm:h-[330px] lg:h-[300px] xl:h-[320px]"
-              />
+              <Link href={`/memory/${memory.id}`}>
+                <img
+                  src={firstMedia.url}
+                  alt={memory.title ?? "Memory media"}
+                  className="h-[280px] w-full object-cover transition duration-300 hover:scale-[1.02] sm:h-[330px] lg:h-[300px] xl:h-[320px]"
+                />
+              </Link>
             ) : firstMedia.mediaKind === "video" ? (
               <video
                 src={firstMedia.url}
@@ -185,15 +185,21 @@ function MemoryCard({
                 controls
               />
             ) : (
-              <div className="flex h-[280px] items-center justify-center bg-[var(--app-soft)] text-[var(--app-accent)]">
+              <Link
+                href={`/memory/${memory.id}`}
+                className="flex h-[280px] items-center justify-center bg-[var(--app-soft)] text-[var(--app-accent)]"
+              >
                 <ImagePlus />
-              </div>
+              </Link>
             )}
           </div>
         ) : (
-          <div className="mb-4 flex h-[280px] items-center justify-center rounded-[1.6rem] [background:var(--vault-hero)] sm:h-[330px] lg:h-[300px] xl:h-[320px]">
+          <Link
+            href={`/memory/${memory.id}`}
+            className="mb-4 flex h-[280px] items-center justify-center rounded-[1.6rem] [background:var(--vault-hero)] sm:h-[330px] lg:h-[300px] xl:h-[320px]"
+          >
             <ImagePlus className="text-[var(--app-accent)]" />
-          </div>
+          </Link>
         )}
 
         <div className="mb-3 flex flex-wrap gap-2">
@@ -211,11 +217,11 @@ function MemoryCard({
           </span>
         </div>
 
-        {memory.title && (
-          <h3 className="font-brand mb-2 text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-            {memory.title}
+        <Link href={`/memory/${memory.id}`}>
+          <h3 className="font-brand mb-2 text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)] transition hover:text-[var(--app-accent)]">
+            {memory.title || "Untitled memory"}
           </h3>
-        )}
+        </Link>
 
         <p className="text-[15px] leading-7 text-[var(--app-muted)]">
           {memory.content}
@@ -234,23 +240,13 @@ function MemoryCard({
           </div>
         )}
 
-        <div className="mt-5 flex items-center justify-between border-t border-[var(--app-border)] pt-4">
-          <div className="flex items-center gap-4 text-[var(--app-muted)]">
-            <button className="flex items-center gap-2 transition hover:text-rose-500">
-              <Heart size={18} />
-              <span className="text-xs font-medium">Like</span>
-            </button>
-
-            <button className="flex items-center gap-2 transition hover:text-[var(--app-accent)]">
-              <MessageCircle size={18} />
-              <span className="text-xs font-medium">Reflect</span>
-            </button>
-          </div>
-
-          <button className="text-[var(--app-muted)] transition hover:text-[var(--app-accent)]">
-            <Bookmark size={18} />
-          </button>
-        </div>
+        <MemoryEngagementBar
+          memoryId={memory.id}
+          initialLikeCount={memory.engagement.likeCount}
+          initialReflectionCount={memory.engagement.reflectionCount}
+          initiallyLiked={memory.engagement.viewerHasLiked}
+          canEngage={memory.engagement.canEngage}
+        />
       </div>
     </article>
   );

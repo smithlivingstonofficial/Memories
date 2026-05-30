@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createSignedReadUrl } from "@/lib/r2";
+import { getMemoryEngagementMap } from "@/lib/memories/get-memory-engagements";
 import type { FeedMemory, FeedMemoryMedia } from "@/types/memory";
 
 type SupabaseClient = Awaited<
@@ -42,7 +43,10 @@ type MemoryMediaRow = {
   asset: MediaAssetRow | MediaAssetRow[] | null;
 };
 
-export async function getHomeFeed(supabase: SupabaseClient) {
+export async function getHomeFeed(
+  supabase: SupabaseClient,
+  viewerId: string
+): Promise<FeedMemory[]> {
   const { data: memories, error: memoriesError } = await supabase
     .from("memories")
     .select(
@@ -59,13 +63,19 @@ export async function getHomeFeed(supabase: SupabaseClient) {
   const memoryRows = (memories ?? []) as MemoryRow[];
 
   if (memoryRows.length === 0) {
-    return [] satisfies FeedMemory[];
+    return [];
   }
 
   const memoryIds = memoryRows.map((memory) => memory.id);
   const ownerIds = Array.from(
     new Set(memoryRows.map((memory) => memory.owner_id))
   );
+
+  const engagementMap = await getMemoryEngagementMap({
+    supabase,
+    memoryIds,
+    viewerId,
+  });
 
   const { data: profiles } = await supabase
     .from("public_profiles")
@@ -152,6 +162,12 @@ export async function getHomeFeed(supabase: SupabaseClient) {
         avatarUrl: profile?.avatar_url ?? null,
       },
       media: mediaByMemoryId.get(memory.id) ?? [],
+      engagement: engagementMap.get(memory.id) ?? {
+        likeCount: 0,
+        reflectionCount: 0,
+        viewerHasLiked: false,
+        canEngage: memory.privacy !== "vault",
+      },
     };
-  }) satisfies FeedMemory[];
+  });
 }

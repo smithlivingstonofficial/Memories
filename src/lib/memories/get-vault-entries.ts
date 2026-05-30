@@ -43,7 +43,7 @@ export async function getVaultEntries(
     username: string;
     avatarUrl: string | null;
   }
-) {
+): Promise<FeedMemory[]> {
   const { data: entries, error: entriesError } = await supabase
     .from("memories")
     .select(
@@ -61,7 +61,7 @@ export async function getVaultEntries(
   const entryRows = (entries ?? []) as VaultMemoryRow[];
 
   if (entryRows.length === 0) {
-    return [] satisfies FeedMemory[];
+    return [];
   }
 
   const entryIds = entryRows.map((entry) => entry.id);
@@ -137,6 +137,12 @@ export async function getVaultEntries(
         avatarUrl: author.avatarUrl,
       },
       media: mediaByEntryId.get(entry.id) ?? [],
+      engagement: {
+        likeCount: 0,
+        reflectionCount: 0,
+        viewerHasLiked: false,
+        canEngage: false,
+      },
     };
-  }) satisfies FeedMemory[];
+  });
 }

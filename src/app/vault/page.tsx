@@ -1,5 +1,3 @@
-// src/app/vault/page.tsx
-
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -27,18 +25,22 @@ export default async function VaultPage() {
     redirect("/complete-profile");
   }
 
+  const fullName = profile.full_name ?? "Memories User";
+  const username = profile.username ?? "memories_user";
+  const avatarUrl = profile.avatar_url ?? null;
+
   const entries = await getVaultEntries(supabase, user.id, {
-    fullName: profile.full_name ?? "Memories User",
-    username: profile.username ?? "memories_user",
-    avatarUrl: profile.avatar_url,
+    fullName,
+    username,
+    avatarUrl,
   });
 
   return (
     <AppLayout
       user={{
-        fullName: profile.full_name ?? "Memories User",
-        username: profile.username ?? "memories_user",
-        avatarUrl: profile.avatar_url,
+        fullName,
+        username,
+        avatarUrl,
       }}
     >
       <VaultScreen entries={entries} />
