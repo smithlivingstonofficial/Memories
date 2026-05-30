@@ -49,7 +49,7 @@ export function PublicProfileScreen({ data }: PublicProfileScreenProps) {
           </div>
 
           <div className="absolute right-4 top-4">
-            {viewer.isOwner ? (
+            {viewer.isOwner && (
               <Link
                 href="/settings/profile"
                 className="flex h-10 items-center gap-2 rounded-2xl border border-white/30 bg-white/80 px-4 text-sm font-semibold text-slate-800 shadow-sm backdrop-blur-xl transition hover:bg-white"
@@ -57,14 +57,6 @@ export function PublicProfileScreen({ data }: PublicProfileScreenProps) {
                 <Edit3 size={16} />
                 Edit profile
               </Link>
-            ) : (
-              <div className="hidden sm:block">
-                <FollowProfileButton
-                  targetUserId={profile.id}
-                  status={viewer.followStatus}
-                  accountVisibility={profile.accountVisibility}
-                />
-              </div>
             )}
           </div>
         </div>
@@ -150,11 +142,13 @@ export function PublicProfileScreen({ data }: PublicProfileScreenProps) {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <ProfileStat
               label="Public memories"
               value={stats.publicMemories.toString()}
             />
+            <ProfileStat label="Followers" value={stats.followers.toString()} />
+            <ProfileStat label="Following" value={stats.following.toString()} />
             <ProfileStat
               label="Public media"
               value={stats.publicMedia.toString()}

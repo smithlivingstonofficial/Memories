@@ -77,6 +77,8 @@ export type PublicProfilePageData = {
   stats: {
     publicMemories: number;
     publicMedia: number;
+    followers: number;
+    following: number;
   };
   memories: FeedMemory[];
 };
@@ -185,6 +187,23 @@ export async function getPublicProfilePageData({
     profile.accountVisibility === "public" ||
     followStatus === "following";
 
+  const { count: followersCount } = await supabase
+    .from("user_follows")
+    .select("id", { count: "exact", head: true })
+    .eq("following_id", profile.id)
+    .eq("status", "accepted");
+
+  const { count: followingCount } = await supabase
+    .from("user_follows")
+    .select("id", { count: "exact", head: true })
+    .eq("follower_id", profile.id)
+    .eq("status", "accepted");
+
+  const socialStats = {
+    followers: followersCount ?? 0,
+    following: followingCount ?? 0,
+  };
+
   if (!canViewProfileMemories) {
     return {
       profile,
@@ -197,6 +216,8 @@ export async function getPublicProfilePageData({
       stats: {
         publicMemories: 0,
         publicMedia: 0,
+        followers: socialStats.followers,
+        following: socialStats.following,
       },
       memories: [],
     };
@@ -236,6 +257,8 @@ export async function getPublicProfilePageData({
       stats: {
         publicMemories: publicMemoriesCount ?? 0,
         publicMedia: 0,
+        followers: socialStats.followers,
+        following: socialStats.following,
       },
       memories: [],
     };
@@ -333,6 +356,8 @@ export async function getPublicProfilePageData({
     stats: {
       publicMemories: publicMemoriesCount ?? 0,
       publicMedia: publicMediaCount,
+      followers: socialStats.followers,
+      following: socialStats.following,
     },
     memories: feedMemories,
   };

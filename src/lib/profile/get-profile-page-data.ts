@@ -65,6 +65,10 @@ export type ProfilePageData = {
     memories: number;
     vault: number;
     media: number;
+    followers: number;
+    following: number;
+    pendingRequests: number;
+    sentRequests: number;
   };
   memories: FeedMemory[];
 };
@@ -159,6 +163,40 @@ export async function getProfilePageData({
     .eq("owner_id", userId)
     .eq("upload_status", "uploaded");
 
+  const { count: followersCount } = await supabase
+    .from("user_follows")
+    .select("id", { count: "exact", head: true })
+    .eq("following_id", userId)
+    .eq("status", "accepted");
+
+  const { count: followingCount } = await supabase
+    .from("user_follows")
+    .select("id", { count: "exact", head: true })
+    .eq("follower_id", userId)
+    .eq("status", "accepted");
+
+  const { count: pendingRequestsCount } = await supabase
+    .from("user_follows")
+    .select("id", { count: "exact", head: true })
+    .eq("following_id", userId)
+    .eq("status", "pending");
+
+  const { count: sentRequestsCount } = await supabase
+    .from("user_follows")
+    .select("id", { count: "exact", head: true })
+    .eq("follower_id", userId)
+    .eq("status", "pending");
+
+  const stats = {
+    memories: memoriesCount ?? 0,
+    vault: vaultCount ?? 0,
+    media: mediaCount ?? 0,
+    followers: followersCount ?? 0,
+    following: followingCount ?? 0,
+    pendingRequests: pendingRequestsCount ?? 0,
+    sentRequests: sentRequestsCount ?? 0,
+  };
+
   const { data: memories, error: memoriesError } = await supabase
     .from("memories")
     .select(
@@ -178,11 +216,7 @@ export async function getProfilePageData({
   if (memoryRows.length === 0) {
     return {
       profile,
-      stats: {
-        memories: memoriesCount ?? 0,
-        vault: vaultCount ?? 0,
-        media: mediaCount ?? 0,
-      },
+      stats,
       memories: [],
     };
   }
@@ -265,11 +299,7 @@ export async function getProfilePageData({
 
   return {
     profile,
-    stats: {
-      memories: memoriesCount ?? 0,
-      vault: vaultCount ?? 0,
-      media: mediaCount ?? 0,
-    },
+    stats,
     memories: feedMemories,
   };
 }

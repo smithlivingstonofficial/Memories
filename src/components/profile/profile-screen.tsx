@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  Bell,
   CalendarDays,
   Edit3,
   ImagePlus,
@@ -8,6 +9,7 @@ import {
   PenLine,
   Settings,
   Sparkles,
+  UserCheck,
 } from "lucide-react";
 import { DeleteMemoryButton } from "@/components/memory/delete-memory-button";
 import type { FeedMemory } from "@/types/memory";
@@ -103,9 +105,10 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <ProfileStat label="Memories" value={stats.memories.toString()} />
-            <ProfileStat label="Vault" value={stats.vault.toString()} />
+            <ProfileStat label="Followers" value={stats.followers.toString()} />
+            <ProfileStat label="Following" value={stats.following.toString()} />
             <ProfileStat label="Media" value={stats.media.toString()} />
           </div>
         </div>
@@ -155,6 +158,52 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
           <div className="mem-card rounded-[2rem] p-5">
             <div className="mb-4 flex items-center gap-3">
               <div className="flex size-11 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+                <Bell size={18} />
+              </div>
+
+              <div>
+                <h3 className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+                  Follow Requests
+                </h3>
+                <p className="text-xs text-[var(--app-muted)]">
+                  {stats.pendingRequests} pending request
+                  {stats.pendingRequests === 1 ? "" : "s"}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-[1.2rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--app-muted)]">
+                  Sent
+                </p>
+                <p className="mt-1 font-brand text-xl font-semibold text-[var(--app-text)]">
+                  {stats.sentRequests}
+                </p>
+              </div>
+
+              <div className="rounded-[1.2rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--app-muted)]">
+                  Pending
+                </p>
+                <p className="mt-1 font-brand text-xl font-semibold text-[var(--app-text)]">
+                  {stats.pendingRequests}
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/requests"
+              className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] text-sm font-semibold text-white transition hover:bg-[var(--app-accent-hover)]"
+            >
+              Manage Requests
+              <UserCheck size={16} />
+            </Link>
+          </div>
+
+          <div className="mem-card rounded-[2rem] p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex size-11 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
                 <LockKeyhole size={18} />
               </div>
 
@@ -188,8 +237,8 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
             </h3>
 
             <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">
-              Next we will add follow requests, social discovery, likes,
-              reflections, messages, and Moments.
+              Next we will add Discover People, likes, reflections, messages,
+              and Moments.
             </p>
           </div>
         </aside>
