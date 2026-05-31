@@ -1,3 +1,5 @@
+// src/lib/messages/get-messages-data.ts
+
 import "server-only";
 
 import { notFound } from "next/navigation";
@@ -25,6 +27,7 @@ type ProfileRow = {
   full_name: string;
   avatar_url: string | null;
   avatar_asset_id: string | null;
+  account_visibility?: string | null;
 };
 
 type MessageRow = {
@@ -106,6 +109,42 @@ async function resolveAvatarUrl(
   return null;
 }
 
+function getDirectKey(userA: string, userB: string) {
+  return [userA, userB].sort().join(":");
+}
+
+async function canStartConversation({
+  supabase,
+  viewerId,
+  targetUserId,
+}: {
+  supabase: SupabaseClient;
+  viewerId: string;
+  targetUserId: string;
+}) {
+  const { data: targetProfile } = await supabase
+    .from("public_profiles")
+    .select("id, account_visibility")
+    .eq("id", targetUserId)
+    .maybeSingle();
+
+  if (!targetProfile) return false;
+
+  if (targetProfile.account_visibility === "public") {
+    return true;
+  }
+
+  const { data: acceptedConnection } = await supabase
+    .from("user_follows")
+    .select("id")
+    .or(
+      `and(follower_id.eq.${viewerId},following_id.eq.${targetUserId},status.eq.accepted),and(follower_id.eq.${targetUserId},following_id.eq.${viewerId},status.eq.accepted)`
+    )
+    .maybeSingle();
+
+  return Boolean(acceptedConnection);
+}
+
 async function mapProfiles({
   supabase,
   userIds,
@@ -144,6 +183,73 @@ async function mapProfiles({
   return profileMap;
 }
 
+async function getOrCreateDirectConversation({
+  supabase,
+  userId,
+  targetUserId,
+}: {
+  supabase: SupabaseClient;
+  userId: string;
+  targetUserId: string;
+}) {
+  const directKey = getDirectKey(userId, targetUserId);
+
+  const { data: existingConversation } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("direct_key", directKey)
+    .maybeSingle();
+
+  if (existingConversation?.id) {
+    return existingConversation.id as string;
+  }
+
+  const allowed = await canStartConversation({
+    supabase,
+    viewerId: userId,
+    targetUserId,
+  });
+
+  if (!allowed) {
+    notFound();
+  }
+
+  const { data: conversation, error: conversationError } = await supabase
+    .from("conversations")
+    .insert({
+      conversation_type: "direct",
+      direct_key: directKey,
+      created_by: userId,
+    })
+    .select("id")
+    .single();
+
+  if (conversationError || !conversation) {
+    throw new Error(
+      conversationError?.message || "Unable to create conversation."
+    );
+  }
+
+  const { error: membersError } = await supabase
+    .from("conversation_members")
+    .insert([
+      {
+        conversation_id: conversation.id,
+        user_id: userId,
+      },
+      {
+        conversation_id: conversation.id,
+        user_id: targetUserId,
+      },
+    ]);
+
+  if (membersError) {
+    throw new Error(membersError.message);
+  }
+
+  return conversation.id as string;
+}
+
 export async function getMessagesInboxData({
   supabase,
   userId,
@@ -158,9 +264,7 @@ export async function getMessagesInboxData({
 
   const membershipRows = (myMemberships ?? []) as MemberRow[];
 
-  const conversationIds = membershipRows.map(
-    (row) => row.conversation_id
-  );
+  const conversationIds = membershipRows.map((row) => row.conversation_id);
 
   if (conversationIds.length === 0) {
     return {
@@ -187,7 +291,6 @@ export async function getMessagesInboxData({
     .neq("user_id", userId);
 
   const memberRows = (members ?? []) as MemberRow[];
-
   const otherUserIds = memberRows.map((member) => member.user_id);
 
   const profileMap = await mapProfiles({
@@ -209,7 +312,6 @@ export async function getMessagesInboxData({
     .limit(200);
 
   const messageRows = (recentMessages ?? []) as MessageRow[];
-
   const lastMessageByConversation = new Map<string, MessageRow>();
 
   for (const message of messageRows) {
@@ -266,6 +368,48 @@ export async function getMessagesInboxData({
   };
 }
 
+export async function getMessageThreadDataByUsername({
+  supabase,
+  userId,
+  username,
+}: {
+  supabase: SupabaseClient;
+  userId: string;
+  username: string;
+}): Promise<MessageThreadData> {
+  const normalizedUsername = username.trim().toLowerCase();
+
+  if (!/^[a-z0-9_]{3,24}$/.test(normalizedUsername)) {
+    notFound();
+  }
+
+  const { data: targetProfile } = await supabase
+    .from("public_profiles")
+    .select("id, username, full_name, avatar_url, avatar_asset_id")
+    .eq("username", normalizedUsername)
+    .maybeSingle();
+
+  if (!targetProfile) {
+    notFound();
+  }
+
+  if (targetProfile.id === userId) {
+    notFound();
+  }
+
+  const conversationId = await getOrCreateDirectConversation({
+    supabase,
+    userId,
+    targetUserId: targetProfile.id,
+  });
+
+  return getMessageThreadData({
+    supabase,
+    userId,
+    conversationId,
+  });
+}
+
 export async function getMessageThreadData({
   supabase,
   userId,
@@ -292,7 +436,6 @@ export async function getMessageThreadData({
     .eq("conversation_id", conversationId);
 
   const memberRows = (members ?? []) as MemberRow[];
-
   const otherMember = memberRows.find((member) => member.user_id !== userId);
 
   if (!otherMember) {
@@ -326,7 +469,6 @@ export async function getMessageThreadData({
   const mappedMessages: MessageThreadItem[] = messageRows.map((message) => {
     const sender = profileMap.get(message.sender_id);
     const isOwn = message.sender_id === userId;
-
     const messageTime = new Date(message.created_at).getTime();
 
     return {

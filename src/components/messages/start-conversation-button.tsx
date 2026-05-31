@@ -22,12 +22,18 @@ export function StartConversationButton({
     startTransition(async () => {
       const result = await startDirectConversationAction(targetUserId);
 
-      if (!result.success || !result.conversationId) {
+      if (!result.success) {
         setMessage(result.message);
         return;
       }
 
-      router.push(`/messages/${result.conversationId}`);
+      if (!result.username) {
+        setMessage("Unable to open this conversation. Username not found.");
+        return;
+      }
+
+      router.push(`/messages/${result.username}`);
+      router.refresh();
     });
   }
 
@@ -37,17 +43,21 @@ export function StartConversationButton({
         type="button"
         onClick={startConversation}
         disabled={isPending}
-        className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-5 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)] disabled:opacity-60"
+        className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-5 text-sm font-semibold text-[var(--app-muted)] shadow-[0_14px_34px_var(--app-shadow)] transition hover:border-[var(--app-accent)] hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isPending ? (
           <Loader2 size={17} className="animate-spin" />
         ) : (
           <MessageCircle size={17} />
         )}
-        Message
+        {isPending ? "Opening..." : "Message"}
       </button>
 
-      {message && <p className="text-xs font-medium text-rose-500">{message}</p>}
+      {message && (
+        <p className="max-w-[260px] text-xs font-medium leading-5 text-rose-500">
+          {message}
+        </p>
+      )}
     </div>
   );
 }

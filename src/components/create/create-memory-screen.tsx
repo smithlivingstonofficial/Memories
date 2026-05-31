@@ -5,6 +5,7 @@ import { useActionState, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  CalendarDays,
   CheckCircle2,
   ImagePlus,
   Loader2,
@@ -57,7 +58,19 @@ type UploadedAsset = {
   previewUrl: string;
 };
 
-export function CreateMemoryScreen() {
+type CreateMemoryScreenProps = {
+  initialEntryDate?: string;
+  user?: {
+    fullName: string;
+    username: string;
+    avatarUrl: string | null;
+  };
+};
+
+export function CreateMemoryScreen({
+  initialEntryDate,
+  user,
+}: CreateMemoryScreenProps) {
   const [state, formAction, pending] = useActionState(
     createMemoryAction,
     initialState
@@ -65,6 +78,9 @@ export function CreateMemoryScreen() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const [entryDate, setEntryDate] = useState(() =>
+    normalizeDateInput(initialEntryDate)
+  );
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [selectedMoods, setSelectedMoods] = useState<string[]>(["Peaceful"]);
@@ -159,7 +175,7 @@ export function CreateMemoryScreen() {
 
             <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
               <Sparkles size={14} />
-              Memory Writer
+              Diary Memory Writer
             </p>
 
             <h1 className="font-brand text-3xl font-semibold tracking-[-0.055em] text-[var(--app-text)] sm:text-4xl">
@@ -167,11 +183,19 @@ export function CreateMemoryScreen() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--app-muted)]">
-              A calm space to save your thoughts, photos, mood, and meaning.
+              A calm diary-first space to save your thoughts, photos, mood, and
+              meaning.
             </p>
+
+            {user?.username && (
+              <p className="mt-2 text-xs font-medium text-[var(--app-muted)]">
+                Writing as @{user.username}
+              </p>
+            )}
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <InfoPill label="Date" value={formatDateLabel(entryDate)} />
             <InfoPill label="Words" value={wordCount.toString()} />
             <InfoPill label="Read" value={`${readingTime} min`} />
             <InfoPill label="Media" value={uploadedAssets.length.toString()} />
@@ -188,6 +212,8 @@ export function CreateMemoryScreen() {
               value={JSON.stringify(selectedMoods)}
             />
 
+            <input type="hidden" name="entryTimezone" value="Asia/Kolkata" />
+
             <input
               type="hidden"
               name="mediaAssetIds"
@@ -195,6 +221,43 @@ export function CreateMemoryScreen() {
                 uploadedAssets.map((asset) => asset.assetId)
               )}
             />
+
+            <div className="mem-card-strong rounded-[1.7rem] p-4 sm:p-5">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex size-11 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+                  <CalendarDays size={19} />
+                </div>
+
+                <div>
+                  <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+                    Diary date
+                  </h2>
+                  <p className="text-xs text-[var(--app-muted)]">
+                    Choose the real date this memory belongs to.
+                  </p>
+                </div>
+              </div>
+
+              <label className="mb-2 block text-sm font-medium text-[var(--app-text)]">
+                Entry date
+              </label>
+
+              <input
+                type="date"
+                name="entryDate"
+                value={entryDate}
+                required
+                onChange={(event) => setEntryDate(event.target.value)}
+                className="h-12 w-full rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 text-sm font-semibold text-[var(--app-text)] outline-none transition focus:border-[var(--app-accent)]"
+              />
+
+              <p className="mt-3 text-xs leading-5 text-[var(--app-muted)]">
+                If you write today about yesterday, select yesterday. Calendar,
+                dashboard, and timeline will use this date.
+              </p>
+
+              <FieldError message={state.errors?.entryDate?.[0]} />
+            </div>
 
             <div className="mem-card-strong rounded-[1.7rem] p-4 sm:p-5">
               <label className="mb-3 block text-sm font-semibold text-[var(--app-text)]">
@@ -444,6 +507,7 @@ export function CreateMemoryScreen() {
               moods={selectedMoods}
               privacyLabel={selectedPrivacy?.label ?? "Private"}
               locationName={locationName}
+              entryDate={entryDate}
               media={uploadedAssets[0]}
             />
 
@@ -494,6 +558,7 @@ function LivePreview({
   moods,
   privacyLabel,
   locationName,
+  entryDate,
   media,
 }: {
   title: string;
@@ -501,6 +566,7 @@ function LivePreview({
   moods: string[];
   privacyLabel: string;
   locationName: string;
+  entryDate: string;
   media?: UploadedAsset;
 }) {
   return (
@@ -538,6 +604,10 @@ function LivePreview({
         )}
 
         <div className="mb-3 flex flex-wrap gap-2">
+          <span className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-medium text-[var(--app-accent)]">
+            {formatDateLabel(entryDate)}
+          </span>
+
           {moods.map((mood) => (
             <span
               key={mood}
@@ -575,4 +645,50 @@ function FieldError({ message }: { message?: string }) {
   if (!message) return null;
 
   return <p className="mt-1.5 text-xs font-medium text-rose-500">{message}</p>;
+}
+
+function getTodayInputValue() {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  const parts = formatter.formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value ?? "2026";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+
+  return `${year}-${month}-${day}`;
+}
+
+function isValidDateInput(value?: string) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+function normalizeDateInput(value?: string) {
+  return isValidDateInput(value) ? value! : getTodayInputValue();
+}
+
+function formatDateLabel(value: string) {
+  if (!isValidDateInput(value)) return "Today";
+
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  });
 }

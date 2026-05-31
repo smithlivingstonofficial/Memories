@@ -1,20 +1,19 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppLayout } from "@/components/layout/app-layout";
-import { CreateMemoryScreen } from "@/components/create/create-memory-screen";
-import { normalizeEntryDate } from "@/lib/diary/entry-date";
+import { MessageThreadScreen } from "@/components/messages/message-thread-screen";
+import { getMessageThreadDataByUsername } from "@/lib/messages/get-messages-data";
 
-type CreateMemoryPageProps = {
-  searchParams?: Promise<{
-    date?: string;
+type MessageThreadPageProps = {
+  params: Promise<{
+    username: string;
   }>;
 };
 
-export default async function CreateMemoryPage({
-  searchParams,
-}: CreateMemoryPageProps) {
-  const params = await searchParams;
-  const initialEntryDate = normalizeEntryDate(params?.date);
+export default async function MessageThreadPage({
+  params,
+}: MessageThreadPageProps) {
+  const { username } = await params;
 
   const supabase = await createClient();
 
@@ -36,6 +35,16 @@ export default async function CreateMemoryPage({
     redirect("/complete-profile");
   }
 
+  if (profile.username === username) {
+    redirect("/messages");
+  }
+
+  const data = await getMessageThreadDataByUsername({
+    supabase,
+    userId: user.id,
+    username,
+  });
+
   return (
     <AppLayout
       user={{
@@ -44,14 +53,7 @@ export default async function CreateMemoryPage({
         avatarUrl: profile.avatar_url ?? null,
       }}
     >
-      <CreateMemoryScreen
-        initialEntryDate={initialEntryDate}
-        user={{
-          fullName: profile.full_name ?? "Memories User",
-          username: profile.username ?? "memories_user",
-          avatarUrl: profile.avatar_url ?? null,
-        }}
-      />
+      <MessageThreadScreen data={data} currentUserId={user.id} />
     </AppLayout>
   );
 }

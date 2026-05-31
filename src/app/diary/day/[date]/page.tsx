@@ -1,20 +1,17 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppLayout } from "@/components/layout/app-layout";
-import { CreateMemoryScreen } from "@/components/create/create-memory-screen";
-import { normalizeEntryDate } from "@/lib/diary/entry-date";
+import { DiaryDayScreen } from "@/components/diary/diary-day-screen";
+import { getDiaryDayPageData } from "@/lib/diary/get-diary-day-page-data";
 
-type CreateMemoryPageProps = {
-  searchParams?: Promise<{
-    date?: string;
+type DiaryDayPageProps = {
+  params: Promise<{
+    date: string;
   }>;
 };
 
-export default async function CreateMemoryPage({
-  searchParams,
-}: CreateMemoryPageProps) {
-  const params = await searchParams;
-  const initialEntryDate = normalizeEntryDate(params?.date);
+export default async function DiaryDayPage({ params }: DiaryDayPageProps) {
+  const { date } = await params;
 
   const supabase = await createClient();
 
@@ -36,6 +33,11 @@ export default async function CreateMemoryPage({
     redirect("/complete-profile");
   }
 
+  const data = await getDiaryDayPageData({
+    supabase,
+    date,
+  });
+
   return (
     <AppLayout
       user={{
@@ -44,14 +46,7 @@ export default async function CreateMemoryPage({
         avatarUrl: profile.avatar_url ?? null,
       }}
     >
-      <CreateMemoryScreen
-        initialEntryDate={initialEntryDate}
-        user={{
-          fullName: profile.full_name ?? "Memories User",
-          username: profile.username ?? "memories_user",
-          avatarUrl: profile.avatar_url ?? null,
-        }}
-      />
+      <DiaryDayScreen data={data} />
     </AppLayout>
   );
 }

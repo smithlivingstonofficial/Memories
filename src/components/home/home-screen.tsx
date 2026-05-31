@@ -1,68 +1,47 @@
 import Link from "next/link";
 import {
+  Clock3,
   ImagePlus,
   LockKeyhole,
   MoreHorizontal,
   Plus,
   Sparkles,
 } from "lucide-react";
+import { HomeMomentsRealtimeRefresh } from "@/components/home/home-moments-realtime-refresh";
 import { DeleteMemoryButton } from "@/components/memory/delete-memory-button";
 import { MemoryEngagementBar } from "@/components/memory/memory-engagement-bar";
 import type { FeedMemory } from "@/types/memory";
-
-const moments = [
-  "You",
-  "Inner Circle",
-  "Friends",
-  "Family",
-  "Travel",
-  "Vault",
-  "Peaceful",
-];
+import type { ActiveMoment } from "@/types/moment";
 
 type HomeScreenProps = {
   memories: FeedMemory[];
+  activeMoments: ActiveMoment[];
   currentUserId: string;
 };
 
-export function HomeScreen({ memories, currentUserId }: HomeScreenProps) {
+type MomentGroup = {
+  ownerId: string;
+  author: ActiveMoment["author"];
+  moments: ActiveMoment[];
+  latestMoment: ActiveMoment;
+  entryMoment: ActiveMoment;
+  isCurrentUser: boolean;
+};
+
+export function HomeScreen({
+  memories,
+  activeMoments,
+  currentUserId,
+}: HomeScreenProps) {
   return (
     <div className="mx-auto grid w-full max-w-[1500px] gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <HomeMomentsRealtimeRefresh />
+
       <div className="min-w-0 space-y-5">
-        <section className="mem-card rounded-[2rem] p-4 sm:p-5">
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-                Moments
-              </h2>
-              <p className="text-sm leading-6 text-[var(--app-muted)]">
-                Soft updates from people and memories you care about.
-              </p>
-            </div>
-
-            <Link
-              href="/create"
-              className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-accent)] text-white shadow-[0_18px_40px_rgba(99,102,241,0.25)] transition hover:bg-[var(--app-accent-hover)]"
-            >
-              <Plus size={19} />
-            </Link>
-          </div>
-
-          <div className="no-scrollbar flex gap-4 overflow-x-auto pb-1">
-            {moments.map((moment, index) => (
-              <div key={moment} className="shrink-0 text-center">
-                <div className="rounded-full bg-gradient-to-br from-[#6366F1] via-[#A5B4FC] to-[#FFE4E6] p-[2px]">
-                  <div className="flex size-16 items-center justify-center rounded-full bg-[var(--app-surface-strong)] font-semibold text-[var(--app-text)]">
-                    {index === 0 ? <Plus size={20} /> : moment[0]}
-                  </div>
-                </div>
-                <p className="mt-2 max-w-16 truncate text-xs text-[var(--app-muted)]">
-                  {moment}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
+        <MomentsTray
+          activeMoments={activeMoments}
+          currentUserId={currentUserId}
+        />
 
         {memories.length === 0 ? (
           <EmptyFeed />
@@ -128,6 +107,262 @@ export function HomeScreen({ memories, currentUserId }: HomeScreenProps) {
   );
 }
 
+function MomentsTray({
+  activeMoments,
+  currentUserId,
+}: {
+  activeMoments: ActiveMoment[];
+  currentUserId: string;
+}) {
+  const groupedMoments = groupMomentsByUser(activeMoments, currentUserId);
+  const myGroup = groupedMoments.find((group) => group.isCurrentUser);
+  const otherGroups = groupedMoments.filter((group) => !group.isCurrentUser);
+
+  return (
+    <section className="mem-card overflow-hidden rounded-[2rem]">
+      <div className="border-b border-[var(--app-border)] p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+                Moments
+              </h2>
+
+              {activeMoments.length > 0 && (
+                <span className="rounded-full bg-[var(--app-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--app-accent)]">
+                  Live
+                </span>
+              )}
+            </div>
+
+            <p className="mt-1 text-sm leading-6 text-[var(--app-muted)]">
+              Active 24-hour updates from you and your people.
+            </p>
+          </div>
+
+          <Link
+            href="/create/moment"
+            className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-accent)] text-white shadow-[0_18px_40px_rgba(99,102,241,0.25)] transition hover:bg-[var(--app-accent-hover)]"
+            aria-label="Create Moment"
+          >
+            <Plus size={19} />
+          </Link>
+        </div>
+      </div>
+
+      <div className="p-4 sm:p-5">
+        <div className="no-scrollbar flex gap-4 overflow-x-auto pb-1">
+          <YourMomentCard group={myGroup} />
+
+          {otherGroups.map((group) => (
+            <MomentGroupItem key={group.ownerId} group={group} />
+          ))}
+        </div>
+
+        {groupedMoments.length === 0 && (
+          <div className="mt-4 rounded-[1.5rem] border border-dashed border-[var(--app-border)] bg-[var(--app-surface-strong)] p-5 text-center">
+            <div className="mx-auto mb-3 flex size-11 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+              <Clock3 size={18} />
+            </div>
+
+            <h3 className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+              No active Moments yet
+            </h3>
+
+            <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-[var(--app-muted)]">
+              Create a quick photo or video Moment to appear here.
+            </p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function YourMomentCard({ group }: { group?: MomentGroup }) {
+  const firstMedia = group?.latestMoment.media[0];
+
+  if (group) {
+    return (
+      <div className="shrink-0 text-center">
+        <div className="relative">
+          <Link href={`/moment/${group.entryMoment.id}`} className="group block">
+            <div className="rounded-[1.65rem] bg-gradient-to-br from-[#6366F1] via-[#A5B4FC] to-[#FFE4E6] p-[2px]">
+              <div className="relative size-[84px] overflow-hidden rounded-[1.55rem] bg-[var(--app-surface-strong)]">
+                {firstMedia?.mediaKind === "image" ? (
+                  <img
+                    src={firstMedia.url}
+                    alt={group.latestMoment.caption ?? "Your Moment"}
+                    className="size-full object-cover transition duration-300 group-hover:scale-105"
+                  />
+                ) : firstMedia?.mediaKind === "video" ? (
+                  <video
+                    src={firstMedia.url}
+                    className="size-full object-cover"
+                    muted
+                    playsInline
+                    preload="metadata"
+                  />
+                ) : (
+                  <div className="flex size-full items-center justify-center text-[var(--app-accent)]">
+                    <ImagePlus size={20} />
+                  </div>
+                )}
+
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent p-1.5">
+                  <p className="truncate text-[10px] font-semibold text-white">
+                    {group.moments.length > 1
+                      ? `${group.moments.length} Moments`
+                      : group.latestMoment.mood ?? "Moment"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/create/moment"
+            className="absolute -bottom-1 -right-1 flex size-8 items-center justify-center rounded-xl border-2 border-[var(--app-surface-strong)] bg-[var(--app-accent)] text-white shadow-lg"
+            aria-label="Add another Moment"
+          >
+            <Plus size={15} />
+          </Link>
+        </div>
+
+        <p className="mt-2 max-w-[84px] truncate text-xs font-semibold text-[var(--app-text)]">
+          Your Moment
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <Link href="/create/moment" className="shrink-0 text-center">
+      <div className="rounded-[1.65rem] bg-[var(--app-border)] p-[2px]">
+        <div className="flex size-[84px] items-center justify-center rounded-[1.55rem] bg-[var(--app-surface-strong)] text-[var(--app-accent)]">
+          <Plus size={22} />
+        </div>
+      </div>
+
+      <p className="mt-2 max-w-[84px] truncate text-xs font-semibold text-[var(--app-muted)]">
+        Your Moment
+      </p>
+    </Link>
+  );
+}
+
+function MomentGroupItem({ group }: { group: MomentGroup }) {
+  const firstMedia = group.latestMoment.media[0];
+
+  return (
+    <Link
+      href={`/moment/${group.entryMoment.id}`}
+      className="group shrink-0 text-center"
+    >
+      <div className="rounded-[1.65rem] bg-gradient-to-br from-[#6366F1] via-[#A5B4FC] to-[#FFE4E6] p-[2px]">
+        <div className="relative size-[84px] overflow-hidden rounded-[1.55rem] bg-[var(--app-surface-strong)]">
+          {firstMedia?.mediaKind === "image" ? (
+            <img
+              src={firstMedia.url}
+              alt={group.latestMoment.caption ?? "Moment"}
+              className="size-full object-cover transition duration-300 group-hover:scale-105"
+            />
+          ) : firstMedia?.mediaKind === "video" ? (
+            <video
+              src={firstMedia.url}
+              className="size-full object-cover"
+              muted
+              playsInline
+              preload="metadata"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center text-[var(--app-accent)]">
+              <ImagePlus size={20} />
+            </div>
+          )}
+
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent p-1.5">
+            <p className="truncate text-[10px] font-semibold text-white">
+              {group.moments.length > 1
+                ? `${group.moments.length} Moments`
+                : group.latestMoment.mood ?? "Moment"}
+            </p>
+          </div>
+
+          {group.author.avatarUrl && (
+            <img
+              src={group.author.avatarUrl}
+              alt={group.author.fullName}
+              className="absolute left-1.5 top-1.5 size-6 rounded-lg border border-white/70 object-cover"
+            />
+          )}
+        </div>
+      </div>
+
+      <p className="mt-2 max-w-[84px] truncate text-xs font-medium text-[var(--app-muted)]">
+        {group.author.fullName}
+      </p>
+    </Link>
+  );
+}
+
+function groupMomentsByUser(
+  activeMoments: ActiveMoment[],
+  currentUserId: string
+): MomentGroup[] {
+  const map = new Map<string, MomentGroup>();
+
+  for (const moment of activeMoments) {
+    const existing = map.get(moment.ownerId);
+
+    if (!existing) {
+      map.set(moment.ownerId, {
+        ownerId: moment.ownerId,
+        author: moment.author,
+        moments: [moment],
+        latestMoment: moment,
+        entryMoment: moment,
+        isCurrentUser: moment.ownerId === currentUserId,
+      });
+
+      continue;
+    }
+
+    existing.moments.push(moment);
+
+    if (
+      new Date(moment.createdAt).getTime() >
+      new Date(existing.latestMoment.createdAt).getTime()
+    ) {
+      existing.latestMoment = moment;
+    }
+
+    if (
+      new Date(moment.createdAt).getTime() <
+      new Date(existing.entryMoment.createdAt).getTime()
+    ) {
+      existing.entryMoment = moment;
+    }
+  }
+
+  for (const group of map.values()) {
+    group.moments.sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }
+
+  return Array.from(map.values()).sort((a, b) => {
+    if (a.isCurrentUser && !b.isCurrentUser) return -1;
+    if (!a.isCurrentUser && b.isCurrentUser) return 1;
+
+    return (
+      new Date(b.latestMoment.createdAt).getTime() -
+      new Date(a.latestMoment.createdAt).getTime()
+    );
+  });
+}
+
 function MemoryCard({
   memory,
   canDelete,
@@ -162,7 +397,11 @@ function MemoryCard({
               <DeleteMemoryButton memoryId={memory.id} type="memory" />
             )}
 
-            <button className="text-[var(--app-muted)] transition hover:text-[var(--app-text)]">
+            <button
+              type="button"
+              className="text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
+              aria-label="More options"
+            >
               <MoreHorizontal size={19} />
             </button>
           </div>

@@ -1,20 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppLayout } from "@/components/layout/app-layout";
-import { MessageThreadScreen } from "@/components/messages/message-thread-screen";
-import { getMessageThreadData } from "@/lib/messages/get-messages-data";
+import { CreateMomentScreen } from "@/components/create/create-moment-screen";
 
-type MessageThreadPageProps = {
-  params: Promise<{
-    conversationId: string;
-  }>;
-};
-
-export default async function MessageThreadPage({
-  params,
-}: MessageThreadPageProps) {
-  const { conversationId } = await params;
-
+export default async function CreateMomentPage() {
   const supabase = await createClient();
 
   const {
@@ -35,12 +24,6 @@ export default async function MessageThreadPage({
     redirect("/complete-profile");
   }
 
-  const data = await getMessageThreadData({
-    supabase,
-    userId: user.id,
-    conversationId,
-  });
-
   return (
     <AppLayout
       user={{
@@ -49,7 +32,13 @@ export default async function MessageThreadPage({
         avatarUrl: profile.avatar_url ?? null,
       }}
     >
-      <MessageThreadScreen data={data} currentUserId={user.id} />
+      <CreateMomentScreen
+        user={{
+          fullName: profile.full_name ?? "Memories User",
+          username: profile.username ?? "memories_user",
+          avatarUrl: profile.avatar_url ?? null,
+        }}
+      />
     </AppLayout>
   );
 }

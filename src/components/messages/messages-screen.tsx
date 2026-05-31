@@ -35,7 +35,7 @@ export function MessagesScreen({ data }: MessagesScreenProps) {
           {data.conversations.map((conversation) => (
             <Link
               key={conversation.id}
-              href={`/messages/${conversation.id}`}
+              href={`/messages/${conversation.otherUser.username}`}
               className={
                 conversation.unreadCount > 0
                   ? "mem-card block rounded-[2rem] border-[var(--app-accent)] p-4 transition hover:border-[var(--app-accent)]"

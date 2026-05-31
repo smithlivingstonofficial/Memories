@@ -38,8 +38,8 @@ const createOptions: CreateOption[] = [
       "Capture a photo or video instantly using your camera. Built for fast memories.",
     href: "/create/moment",
     icon: Camera,
-    status: "coming",
-    cta: "Coming next",
+    status: "available",
+    cta: "Start capturing",
     iconClass: "bg-emerald-500 text-white",
   },
   {

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AppLayout } from "@/components/layout/app-layout";
 import { HomeScreen } from "@/components/home/home-screen";
 import { getHomeFeed } from "@/lib/memories/get-home-feed";
+import { getActiveMoments } from "@/lib/moments/get-active-moments";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -25,21 +26,24 @@ export default async function HomePage() {
     redirect("/complete-profile");
   }
 
-  const fullName = profile.full_name ?? "Memories User";
-  const username = profile.username ?? "memories_user";
-  const avatarUrl = profile.avatar_url ?? null;
-
-  const memories = await getHomeFeed(supabase, user.id);
+  const [memories, activeMoments] = await Promise.all([
+    getHomeFeed(supabase, user.id),
+    getActiveMoments(supabase, user.id),
+  ]);
 
   return (
     <AppLayout
       user={{
-        fullName,
-        username,
-        avatarUrl,
+        fullName: profile.full_name ?? "Memories User",
+        username: profile.username ?? "memories_user",
+        avatarUrl: profile.avatar_url ?? null,
       }}
     >
-      <HomeScreen memories={memories} currentUserId={user.id} />
+      <HomeScreen
+        memories={memories}
+        activeMoments={activeMoments}
+        currentUserId={user.id}
+      />
     </AppLayout>
   );
 }

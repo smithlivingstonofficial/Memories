@@ -10,6 +10,8 @@ import { normalizeMoods } from "@/lib/moods";
 export type CreateMemoryState = {
   message?: string;
   errors?: {
+    entryDate?: string[];
+    entryTimezone?: string[];
     title?: string[];
     content?: string[];
     moods?: string[];
@@ -44,6 +46,19 @@ const optionalText = (max: number) =>
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : null;
   }, z.string().max(max).nullable());
+
+const EntryDateSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid diary date.")
+  .refine((value) => isValidEntryDate(value), "Invalid diary date.");
+
+const EntryTimezoneSchema = z.preprocess((value) => {
+  if (typeof value !== "string") return "Asia/Kolkata";
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : "Asia/Kolkata";
+}, z.string().max(80));
 
 const MoodsSchema = z.preprocess((value) => {
   if (typeof value !== "string" || value.trim().length === 0) {
@@ -80,6 +95,10 @@ const MediaAssetIdsSchema = z.preprocess((value) => {
 }, z.array(z.string().uuid()).max(10));
 
 const CreateMemorySchema = z.object({
+  entryDate: EntryDateSchema,
+
+  entryTimezone: EntryTimezoneSchema,
+
   title: optionalText(120),
 
   content: z
@@ -131,6 +150,8 @@ export async function createMemoryAction(
   formData: FormData
 ): Promise<CreateMemoryState> {
   const validatedFields = CreateMemorySchema.safeParse({
+    entryDate: formData.get("entryDate"),
+    entryTimezone: formData.get("entryTimezone"),
     title: formData.get("title"),
     content: formData.get("content"),
     moods: formData.get("moods"),
@@ -148,6 +169,8 @@ export async function createMemoryAction(
   }
 
   const {
+    entryDate,
+    entryTimezone,
     title,
     content,
     moods,
@@ -227,6 +250,9 @@ export async function createMemoryAction(
       privacy,
       location_name: locationName,
       tags,
+      entry_date: entryDate,
+      entry_timezone: entryTimezone || "Asia/Kolkata",
+      media_count: mediaAssetIds.length,
     })
     .select("id")
     .single();
@@ -250,6 +276,14 @@ export async function createMemoryAction(
       .insert(rows);
 
     if (memoryMediaError) {
+      await supabase
+        .from("memories")
+        .update({
+          media_count: 0,
+        })
+        .eq("id", memory.id)
+        .eq("owner_id", user.id);
+
       return {
         message:
           memoryMediaError.message ||
@@ -258,7 +292,16 @@ export async function createMemoryAction(
     }
   }
 
-  redirect("/home");
+  revalidatePath("/home");
+  revalidatePath("/dashboard");
+  revalidatePath("/calendar");
+  revalidatePath("/timeline");
+  revalidatePath("/profile");
+  revalidatePath("/create/memory");
+  revalidatePath(`/diary/day/${entryDate}`);
+  revalidatePath(`/memory/${memory.id}`);
+
+  redirect(`/diary/day/${entryDate}`);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -345,6 +388,8 @@ export async function createVaultEntryAction(
     }
   }
 
+  const entryDate = getTodayInTimeZone();
+
   const { data: vaultEntry, error: vaultError } = await supabase
     .from("memories")
     .insert({
@@ -356,6 +401,9 @@ export async function createVaultEntryAction(
       privacy: "vault",
       location_name: null,
       tags: [],
+      entry_date: entryDate,
+      entry_timezone: "Asia/Kolkata",
+      media_count: mediaAssetIds.length,
     })
     .select("id")
     .single();
@@ -379,6 +427,14 @@ export async function createVaultEntryAction(
       .insert(rows);
 
     if (memoryMediaError) {
+      await supabase
+        .from("memories")
+        .update({
+          media_count: 0,
+        })
+        .eq("id", vaultEntry.id)
+        .eq("owner_id", user.id);
+
       return {
         message:
           memoryMediaError.message ||
@@ -386,6 +442,13 @@ export async function createVaultEntryAction(
       };
     }
   }
+
+  revalidatePath("/home");
+  revalidatePath("/dashboard");
+  revalidatePath("/calendar");
+  revalidatePath("/timeline");
+  revalidatePath("/vault");
+  revalidatePath(`/diary/day/${entryDate}`);
 
   redirect("/vault");
 }
@@ -414,7 +477,7 @@ export async function deleteMemoryAction(memoryId: string): Promise<{
 
   const { data: memory, error: memoryError } = await supabase
     .from("memories")
-    .select("id, owner_id, privacy")
+    .select("id, owner_id, privacy, entry_date")
     .eq("id", memoryId)
     .eq("owner_id", user.id)
     .maybeSingle();
@@ -485,8 +548,15 @@ export async function deleteMemoryAction(memoryId: string): Promise<{
   }
 
   revalidatePath("/home");
+  revalidatePath("/dashboard");
+  revalidatePath("/calendar");
+  revalidatePath("/timeline");
   revalidatePath("/profile");
   revalidatePath("/vault");
+
+  if (memory.entry_date) {
+    revalidatePath(`/diary/day/${memory.entry_date}`);
+  }
 
   return {
     success: true,
@@ -495,4 +565,33 @@ export async function deleteMemoryAction(memoryId: string): Promise<{
         ? "Vault entry and attached media deleted."
         : "Memory and attached media deleted.",
   };
+}
+
+function getTodayInTimeZone(timeZone = "Asia/Kolkata") {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  const parts = formatter.formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value ?? "2026";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+
+  return `${year}-${month}-${day}`;
+}
+
+function isValidEntryDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
 }

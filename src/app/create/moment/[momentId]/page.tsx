@@ -1,20 +1,19 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppLayout } from "@/components/layout/app-layout";
-import { CreateMemoryScreen } from "@/components/create/create-memory-screen";
-import { normalizeEntryDate } from "@/lib/diary/entry-date";
+import { MomentViewerScreen } from "@/components/moments/moment-viewer-screen";
+import { getMomentViewerData } from "@/lib/moments/get-moment-viewer-data";
 
-type CreateMemoryPageProps = {
-  searchParams?: Promise<{
-    date?: string;
+type MomentViewerPageProps = {
+  params: Promise<{
+    momentId: string;
   }>;
 };
 
-export default async function CreateMemoryPage({
-  searchParams,
-}: CreateMemoryPageProps) {
-  const params = await searchParams;
-  const initialEntryDate = normalizeEntryDate(params?.date);
+export default async function MomentViewerPage({
+  params,
+}: MomentViewerPageProps) {
+  const { momentId } = await params;
 
   const supabase = await createClient();
 
@@ -36,6 +35,12 @@ export default async function CreateMemoryPage({
     redirect("/complete-profile");
   }
 
+  const data = await getMomentViewerData({
+    supabase,
+    momentId,
+    viewerId: user.id,
+  });
+
   return (
     <AppLayout
       user={{
@@ -44,14 +49,7 @@ export default async function CreateMemoryPage({
         avatarUrl: profile.avatar_url ?? null,
       }}
     >
-      <CreateMemoryScreen
-        initialEntryDate={initialEntryDate}
-        user={{
-          fullName: profile.full_name ?? "Memories User",
-          username: profile.username ?? "memories_user",
-          avatarUrl: profile.avatar_url ?? null,
-        }}
-      />
+      <MomentViewerScreen data={data} />
     </AppLayout>
   );
 }

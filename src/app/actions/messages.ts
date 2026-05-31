@@ -8,6 +8,7 @@ export type MessageActionResult = {
   success: boolean;
   message: string;
   conversationId?: string;
+  username?: string;
 };
 
 export type SendMessageState = {
@@ -85,6 +86,19 @@ export async function startDirectConversationAction(
     };
   }
 
+  const { data: targetPublicProfile } = await supabase
+    .from("public_profiles")
+    .select("id, username")
+    .eq("id", targetUserId)
+    .maybeSingle();
+
+  if (!targetPublicProfile?.username) {
+    return {
+      success: false,
+      message: "User profile not found.",
+    };
+  }
+
   const allowed = await canStartConversation({
     supabase,
     viewerId: user.id,
@@ -112,6 +126,7 @@ export async function startDirectConversationAction(
       success: true,
       message: "Conversation opened.",
       conversationId: existingConversation.id,
+      username: targetPublicProfile.username,
     };
   }
 
@@ -153,11 +168,13 @@ export async function startDirectConversationAction(
   }
 
   revalidatePath("/messages");
+  revalidatePath(`/messages/${targetPublicProfile.username}`);
 
   return {
     success: true,
     message: "Conversation created.",
     conversationId: conversation.id,
+    username: targetPublicProfile.username,
   };
 }
 
@@ -224,13 +241,36 @@ export async function sendMessageAction(
   await supabase
     .from("conversation_members")
     .update({
-        last_read_at: new Date().toISOString(),
+      last_read_at: new Date().toISOString(),
     })
     .eq("conversation_id", conversationId)
     .eq("user_id", user.id);
 
+  const { data: otherMember } = await supabase
+    .from("conversation_members")
+    .select("user_id")
+    .eq("conversation_id", conversationId)
+    .neq("user_id", user.id)
+    .maybeSingle();
+
+  let otherUsername: string | null = null;
+
+  if (otherMember?.user_id) {
+    const { data: otherProfile } = await supabase
+      .from("public_profiles")
+      .select("username")
+      .eq("id", otherMember.user_id)
+      .maybeSingle();
+
+    otherUsername = otherProfile?.username ?? null;
+  }
+
   revalidatePath("/messages");
   revalidatePath(`/messages/${conversationId}`);
+
+  if (otherUsername) {
+    revalidatePath(`/messages/${otherUsername}`);
+  }
 
   return {
     success: true,
@@ -271,8 +311,31 @@ export async function markConversationReadAction(
     };
   }
 
+  const { data: otherMember } = await supabase
+    .from("conversation_members")
+    .select("user_id")
+    .eq("conversation_id", conversationId)
+    .neq("user_id", user.id)
+    .maybeSingle();
+
+  let otherUsername: string | null = null;
+
+  if (otherMember?.user_id) {
+    const { data: otherProfile } = await supabase
+      .from("public_profiles")
+      .select("username")
+      .eq("id", otherMember.user_id)
+      .maybeSingle();
+
+    otherUsername = otherProfile?.username ?? null;
+  }
+
   revalidatePath("/messages");
   revalidatePath(`/messages/${conversationId}`);
+
+  if (otherUsername) {
+    revalidatePath(`/messages/${otherUsername}`);
+  }
 
   return {
     success: true,
