@@ -44,8 +44,7 @@ export function LoginScreen() {
           </h1>
 
           <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
-            Continue with Google or login using the password created after your
-            Google verification.
+            Continue with Google or login using the password.
           </p>
         </div>
 
@@ -140,8 +139,7 @@ export function LoginScreen() {
           <div className="flex gap-3">
             <LockKeyhole size={17} className="mt-0.5 shrink-0 text-[#6366F1]" />
             <p className="text-xs leading-5 text-slate-600">
-              Email password login works after Google verification and profile
-              password setup.
+              Email password login works after Google verification.
             </p>
           </div>
         </div>

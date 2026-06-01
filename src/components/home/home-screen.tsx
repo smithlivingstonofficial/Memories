@@ -1,15 +1,21 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
-  Clock3,
+  CalendarDays,
   ImagePlus,
-  LockKeyhole,
   MoreHorizontal,
+  PenLine,
   Plus,
-  Sparkles,
 } from "lucide-react";
 import { HomeMomentsRealtimeRefresh } from "@/components/home/home-moments-realtime-refresh";
 import { DeleteMemoryButton } from "@/components/memory/delete-memory-button";
 import { MemoryEngagementBar } from "@/components/memory/memory-engagement-bar";
+import {
+  getQuickMemoryDraftKey,
+  type QuickMemoryDraft,
+} from "@/lib/quick-memory-draft";
 import type { FeedMemory } from "@/types/memory";
 import type { ActiveMoment } from "@/types/moment";
 
@@ -34,19 +40,21 @@ export function HomeScreen({
   currentUserId,
 }: HomeScreenProps) {
   return (
-    <div className="mx-auto grid w-full max-w-[1500px] gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="mx-auto grid w-full max-w-[1500px] gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
       <HomeMomentsRealtimeRefresh />
 
-      <div className="min-w-0 space-y-5">
+      <div className="min-w-0 space-y-4">
         <MomentsTray
           activeMoments={activeMoments}
           currentUserId={currentUserId}
         />
 
+        <QuickMemoryCapture currentUserId={currentUserId} />
+
         {memories.length === 0 ? (
           <EmptyFeed />
         ) : (
-          <section className="grid gap-5 lg:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+          <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
             {memories.map((memory) => (
               <MemoryCard
                 key={memory.id}
@@ -58,52 +66,167 @@ export function HomeScreen({
         )}
       </div>
 
-      <aside className="hidden space-y-5 xl:block">
-        <div className="mem-card rounded-[2rem] p-5">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-[var(--app-surface-strong)] text-[var(--app-accent)]">
-              <LockKeyhole size={18} />
-            </div>
-
-            <div>
-              <h3 className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-                Vault
-              </h3>
-              <p className="text-xs text-[var(--app-muted)]">
-                Your private world
-              </p>
-            </div>
-          </div>
-
-          <p className="text-sm leading-6 text-[var(--app-muted)]">
-            Write private memories visible only to you. No likes. No public
-            pressure.
-          </p>
-
-          <Link
-            href="/create/vault"
-            className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--app-heading)] text-sm font-semibold text-[var(--app-bg)] transition hover:opacity-90"
-          >
-            Write in Vault
-            <Sparkles size={16} />
-          </Link>
-        </div>
-
-        <div className="mem-card rounded-[2rem] p-5">
-          <h3 className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-            Today’s reflection
-          </h3>
-
-          <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">
-            What is one small moment from today that you want to remember?
-          </p>
-
-          <div className="mt-5 rounded-[1.4rem] bg-[var(--app-soft)] p-4 text-sm leading-6 text-[var(--app-accent)]">
-            “Small moments become meaningful when we pause to keep them.”
-          </div>
-        </div>
+      <aside className="hidden space-y-4 xl:block">
+        <DesktopSideArea />
       </aside>
     </div>
+  );
+}
+
+function QuickMemoryCapture({ currentUserId }: { currentUserId: string }) {
+  const draftKey = getQuickMemoryDraftKey(currentUserId);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      const draft = readDraft(draftKey);
+
+      setTitle(draft.title);
+      setContent(draft.content);
+      setStatus(draft.updatedAt ? "Draft" : "");
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [draftKey]);
+
+  const wordCount =
+    content.trim().length === 0 ? 0 : content.trim().split(/\s+/).length;
+  const dateLabel = new Date().toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+  });
+
+  function saveDraft(nextTitle: string, nextContent: string) {
+    if (!nextTitle.trim() && !nextContent.trim()) {
+      localStorage.removeItem(draftKey);
+      setStatus("");
+      return;
+    }
+
+    const draft: QuickMemoryDraft = {
+      title: nextTitle,
+      content: nextContent,
+      updatedAt: new Date().toISOString(),
+    };
+
+    localStorage.setItem(draftKey, JSON.stringify(draft));
+    setStatus("Saved");
+  }
+
+  function handleTitleChange(value: string) {
+    setTitle(value);
+    saveDraft(value, content);
+  }
+
+  function handleContentChange(value: string) {
+    setContent(value);
+    saveDraft(title, value);
+  }
+
+  return (
+    <section className="mem-card rounded-[1.6rem] p-4 shadow-[0_18px_60px_var(--app-shadow)]">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+            <PenLine size={18} />
+          </div>
+
+          <div className="min-w-0">
+            <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+              Quick memory
+            </h2>
+            <div className="mt-1 flex items-center gap-2 text-xs font-medium text-[var(--app-muted)]">
+              <span>{dateLabel}</span>
+              <span>{wordCount} words</span>
+              {status && <span>{status}</span>}
+            </div>
+          </div>
+        </div>
+
+        <Link
+          href="/create/memory?draft=quick"
+          className="flex h-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-accent)] px-4 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(99,102,241,0.24)] transition hover:bg-[var(--app-accent-hover)]"
+        >
+          Continue
+        </Link>
+      </div>
+
+      <input
+        value={title}
+        onChange={(event) => handleTitleChange(event.target.value)}
+        placeholder="Title"
+        className="mb-2 h-11 w-full rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 font-brand text-lg font-semibold tracking-[-0.035em] text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-faint)] focus:border-[var(--app-accent)]"
+      />
+
+      <textarea
+        value={content}
+        onChange={(event) => handleContentChange(event.target.value)}
+        placeholder="Write a quick draft..."
+        rows={3}
+        className="min-h-[92px] w-full resize-none rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 py-3 text-[15px] leading-6 text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-faint)] focus:border-[var(--app-accent)]"
+      />
+    </section>
+  );
+}
+
+function readDraft(key: string): QuickMemoryDraft {
+  if (typeof window === "undefined") {
+    return { title: "", content: "", updatedAt: "" };
+  }
+
+  try {
+    const rawDraft = localStorage.getItem(key);
+    if (!rawDraft) return { title: "", content: "", updatedAt: "" };
+
+    const draft = JSON.parse(rawDraft) as Partial<QuickMemoryDraft>;
+
+    return {
+      title: typeof draft.title === "string" ? draft.title : "",
+      content: typeof draft.content === "string" ? draft.content : "",
+      updatedAt: typeof draft.updatedAt === "string" ? draft.updatedAt : "",
+    };
+  } catch {
+    return { title: "", content: "", updatedAt: "" };
+  }
+}
+
+function DesktopSideArea() {
+  return (
+    <>
+      <Link
+        href="/calendar"
+        className="mem-card flex items-center justify-between rounded-[1.6rem] p-4 transition hover:border-[var(--app-accent)]"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+            <CalendarDays size={18} />
+          </div>
+          <span className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+            Calendar
+          </span>
+        </div>
+        <Plus size={18} className="text-[var(--app-muted)]" />
+      </Link>
+
+      <Link
+        href="/create/vault"
+        className="mem-card flex items-center justify-between rounded-[1.6rem] p-4 transition hover:border-[var(--app-accent)]"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+            <PenLine size={18} />
+          </div>
+          <span className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+            Vault
+          </span>
+        </div>
+        <Plus size={18} className="text-[var(--app-muted)]" />
+      </Link>
+    </>
   );
 }
 
@@ -119,61 +242,26 @@ function MomentsTray({
   const otherGroups = groupedMoments.filter((group) => !group.isCurrentUser);
 
   return (
-    <section className="mem-card overflow-hidden rounded-[2rem]">
-      <div className="border-b border-[var(--app-border)] p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-                Moments
-              </h2>
-
-              {activeMoments.length > 0 && (
-                <span className="rounded-full bg-[var(--app-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--app-accent)]">
-                  Live
-                </span>
-              )}
-            </div>
-
-            <p className="mt-1 text-sm leading-6 text-[var(--app-muted)]">
-              Active 24-hour updates from you and your people.
-            </p>
-          </div>
-
-          <Link
-            href="/create/moment"
-            className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-accent)] text-white shadow-[0_18px_40px_rgba(99,102,241,0.25)] transition hover:bg-[var(--app-accent-hover)]"
-            aria-label="Create Moment"
-          >
-            <Plus size={19} />
-          </Link>
-        </div>
-      </div>
-
-      <div className="p-4 sm:p-5">
-        <div className="no-scrollbar flex gap-4 overflow-x-auto pb-1">
+    <section className="mem-card overflow-hidden rounded-[1.6rem]">
+      <div className="p-4">
+        <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
           <YourMomentCard group={myGroup} />
 
           {otherGroups.map((group) => (
             <MomentGroupItem key={group.ownerId} group={group} />
           ))}
-        </div>
 
-        {groupedMoments.length === 0 && (
-          <div className="mt-4 rounded-[1.5rem] border border-dashed border-[var(--app-border)] bg-[var(--app-surface-strong)] p-5 text-center">
-            <div className="mx-auto mb-3 flex size-11 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
-              <Clock3 size={18} />
+          {groupedMoments.length === 0 && (
+            <div className="flex min-w-[180px] items-center gap-3 rounded-2xl border border-dashed border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 py-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+                <CalendarDays size={17} />
+              </div>
+              <p className="text-sm font-semibold text-[var(--app-text)]">
+                No active Moments
+              </p>
             </div>
-
-            <h3 className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-              No active Moments yet
-            </h3>
-
-            <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-[var(--app-muted)]">
-              Create a quick photo or video Moment to appear here.
-            </p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </section>
   );
@@ -187,49 +275,27 @@ function YourMomentCard({ group }: { group?: MomentGroup }) {
       <div className="shrink-0 text-center">
         <div className="relative">
           <Link href={`/moment/${group.entryMoment.id}`} className="group block">
-            <div className="rounded-[1.65rem] bg-gradient-to-br from-[#6366F1] via-[#A5B4FC] to-[#FFE4E6] p-[2px]">
-              <div className="relative size-[84px] overflow-hidden rounded-[1.55rem] bg-[var(--app-surface-strong)]">
-                {firstMedia?.mediaKind === "image" ? (
-                  <img
-                    src={firstMedia.url}
-                    alt={group.latestMoment.caption ?? "Your Moment"}
-                    className="size-full object-cover transition duration-300 group-hover:scale-105"
-                  />
-                ) : firstMedia?.mediaKind === "video" ? (
-                  <video
-                    src={firstMedia.url}
-                    className="size-full object-cover"
-                    muted
-                    playsInline
-                    preload="metadata"
-                  />
-                ) : (
-                  <div className="flex size-full items-center justify-center text-[var(--app-accent)]">
-                    <ImagePlus size={20} />
-                  </div>
-                )}
-
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent p-1.5">
-                  <p className="truncate text-[10px] font-semibold text-white">
-                    {group.moments.length > 1
-                      ? `${group.moments.length} Moments`
-                      : group.latestMoment.mood ?? "Moment"}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <MomentThumb
+              firstMedia={firstMedia}
+              label={
+                group.moments.length > 1
+                  ? `${group.moments.length} Moments`
+                  : group.latestMoment.mood ?? "Moment"
+              }
+              alt={group.latestMoment.caption ?? "Your Moment"}
+            />
           </Link>
 
           <Link
             href="/create/moment"
-            className="absolute -bottom-1 -right-1 flex size-8 items-center justify-center rounded-xl border-2 border-[var(--app-surface-strong)] bg-[var(--app-accent)] text-white shadow-lg"
+            className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-xl border-2 border-[var(--app-surface-strong)] bg-[var(--app-accent)] text-white shadow-lg"
             aria-label="Add another Moment"
           >
-            <Plus size={15} />
+            <Plus size={14} />
           </Link>
         </div>
 
-        <p className="mt-2 max-w-[84px] truncate text-xs font-semibold text-[var(--app-text)]">
+        <p className="mt-1 max-w-[74px] truncate text-xs font-semibold text-[var(--app-text)]">
           Your Moment
         </p>
       </div>
@@ -238,13 +304,13 @@ function YourMomentCard({ group }: { group?: MomentGroup }) {
 
   return (
     <Link href="/create/moment" className="shrink-0 text-center">
-      <div className="rounded-[1.65rem] bg-[var(--app-border)] p-[2px]">
-        <div className="flex size-[84px] items-center justify-center rounded-[1.55rem] bg-[var(--app-surface-strong)] text-[var(--app-accent)]">
-          <Plus size={22} />
+      <div className="rounded-[1.35rem] bg-[var(--app-border)] p-[2px]">
+        <div className="flex size-[74px] items-center justify-center rounded-[1.25rem] bg-[var(--app-surface-strong)] text-[var(--app-accent)]">
+          <Plus size={20} />
         </div>
       </div>
 
-      <p className="mt-2 max-w-[84px] truncate text-xs font-semibold text-[var(--app-muted)]">
+      <p className="mt-1 max-w-[74px] truncate text-xs font-semibold text-[var(--app-muted)]">
         Your Moment
       </p>
     </Link>
@@ -259,50 +325,76 @@ function MomentGroupItem({ group }: { group: MomentGroup }) {
       href={`/moment/${group.entryMoment.id}`}
       className="group shrink-0 text-center"
     >
-      <div className="rounded-[1.65rem] bg-gradient-to-br from-[#6366F1] via-[#A5B4FC] to-[#FFE4E6] p-[2px]">
-        <div className="relative size-[84px] overflow-hidden rounded-[1.55rem] bg-[var(--app-surface-strong)]">
-          {firstMedia?.mediaKind === "image" ? (
-            <img
-              src={firstMedia.url}
-              alt={group.latestMoment.caption ?? "Moment"}
-              className="size-full object-cover transition duration-300 group-hover:scale-105"
-            />
-          ) : firstMedia?.mediaKind === "video" ? (
-            <video
-              src={firstMedia.url}
-              className="size-full object-cover"
-              muted
-              playsInline
-              preload="metadata"
-            />
-          ) : (
-            <div className="flex size-full items-center justify-center text-[var(--app-accent)]">
-              <ImagePlus size={20} />
-            </div>
-          )}
+      <MomentThumb
+        firstMedia={firstMedia}
+        label={
+          group.moments.length > 1
+            ? `${group.moments.length} Moments`
+            : group.latestMoment.mood ?? "Moment"
+        }
+        alt={group.latestMoment.caption ?? "Moment"}
+        avatarUrl={group.author.avatarUrl}
+        avatarAlt={group.author.fullName}
+      />
 
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent p-1.5">
-            <p className="truncate text-[10px] font-semibold text-white">
-              {group.moments.length > 1
-                ? `${group.moments.length} Moments`
-                : group.latestMoment.mood ?? "Moment"}
-            </p>
-          </div>
-
-          {group.author.avatarUrl && (
-            <img
-              src={group.author.avatarUrl}
-              alt={group.author.fullName}
-              className="absolute left-1.5 top-1.5 size-6 rounded-lg border border-white/70 object-cover"
-            />
-          )}
-        </div>
-      </div>
-
-      <p className="mt-2 max-w-[84px] truncate text-xs font-medium text-[var(--app-muted)]">
+      <p className="mt-1 max-w-[74px] truncate text-xs font-medium text-[var(--app-muted)]">
         {group.author.fullName}
       </p>
     </Link>
+  );
+}
+
+function MomentThumb({
+  firstMedia,
+  label,
+  alt,
+  avatarUrl,
+  avatarAlt,
+}: {
+  firstMedia?: ActiveMoment["media"][number];
+  label: string;
+  alt: string;
+  avatarUrl?: string | null;
+  avatarAlt?: string;
+}) {
+  return (
+    <div className="rounded-[1.35rem] bg-gradient-to-br from-[#6366F1] via-[#A5B4FC] to-[#FFE4E6] p-[2px]">
+      <div className="relative size-[74px] overflow-hidden rounded-[1.25rem] bg-[var(--app-surface-strong)]">
+        {firstMedia?.mediaKind === "image" ? (
+          <img
+            src={firstMedia.url}
+            alt={alt}
+            className="size-full object-cover transition duration-300 group-hover:scale-105"
+          />
+        ) : firstMedia?.mediaKind === "video" ? (
+          <video
+            src={firstMedia.url}
+            className="size-full object-cover"
+            muted
+            playsInline
+            preload="metadata"
+          />
+        ) : (
+          <div className="flex size-full items-center justify-center text-[var(--app-accent)]">
+            <ImagePlus size={18} />
+          </div>
+        )}
+
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent p-1">
+          <p className="truncate text-[9px] font-semibold text-white">
+            {label}
+          </p>
+        </div>
+
+        {avatarUrl && (
+          <img
+            src={avatarUrl}
+            alt={avatarAlt ?? "Avatar"}
+            className="absolute left-1 top-1 size-5 rounded-lg border border-white/70 object-cover"
+          />
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -373,9 +465,9 @@ function MemoryCard({
   const firstMedia = memory.media[0];
 
   return (
-    <article className="mem-card overflow-hidden rounded-[2rem]">
-      <div className="p-5">
-        <div className="mb-4 flex items-center justify-between">
+    <article className="mem-card overflow-hidden rounded-[1.6rem]">
+      <div className="p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <Link
             href={`/u/${memory.author.username}`}
             className="flex min-w-0 items-center gap-3"
@@ -387,7 +479,7 @@ function MemoryCard({
                 {memory.author.fullName}
               </p>
               <p className="truncate text-xs text-[var(--app-muted)]">
-                @{memory.author.username} • {formatDate(memory.createdAt)}
+                @{memory.author.username} {" / "} {formatDate(memory.createdAt)}
               </p>
             </div>
           </Link>
@@ -402,82 +494,62 @@ function MemoryCard({
               className="text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
               aria-label="More options"
             >
-              <MoreHorizontal size={19} />
+              <MoreHorizontal size={18} />
             </button>
           </div>
         </div>
 
-        {firstMedia ? (
-          <div className="mb-4 overflow-hidden rounded-[1.6rem] bg-[var(--app-surface-soft)]">
+        {firstMedia && (
+          <div className="mb-3 overflow-hidden rounded-[1.25rem] bg-[var(--app-surface-soft)]">
             {firstMedia.mediaKind === "image" ? (
               <Link href={`/memory/${memory.id}`}>
                 <img
                   src={firstMedia.url}
                   alt={memory.title ?? "Memory media"}
-                  className="h-[280px] w-full object-cover transition duration-300 hover:scale-[1.02] sm:h-[330px] lg:h-[300px] xl:h-[320px]"
+                  className="h-[220px] w-full object-cover transition duration-300 hover:scale-[1.02] sm:h-[260px] xl:h-[240px]"
                 />
               </Link>
             ) : firstMedia.mediaKind === "video" ? (
               <video
                 src={firstMedia.url}
-                className="h-[280px] w-full object-cover sm:h-[330px] lg:h-[300px] xl:h-[320px]"
+                className="h-[220px] w-full object-cover sm:h-[260px] xl:h-[240px]"
                 controls
               />
             ) : (
               <Link
                 href={`/memory/${memory.id}`}
-                className="flex h-[280px] items-center justify-center bg-[var(--app-soft)] text-[var(--app-accent)]"
+                className="flex h-[220px] items-center justify-center bg-[var(--app-soft)] text-[var(--app-accent)]"
               >
                 <ImagePlus />
               </Link>
             )}
           </div>
-        ) : (
-          <Link
-            href={`/memory/${memory.id}`}
-            className="mb-4 flex h-[280px] items-center justify-center rounded-[1.6rem] [background:var(--vault-hero)] sm:h-[330px] lg:h-[300px] xl:h-[320px]"
-          >
-            <ImagePlus className="text-[var(--app-accent)]" />
-          </Link>
         )}
 
-        <div className="mb-3 flex flex-wrap gap-2">
-          {memory.moods.map((mood) => (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {memory.moods.slice(0, 3).map((mood) => (
             <span
               key={mood}
-              className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-medium text-[var(--app-accent)]"
+              className="rounded-full bg-[var(--app-soft)] px-2.5 py-1 text-xs font-medium text-[var(--app-accent)]"
             >
               {mood}
             </span>
           ))}
 
-          <span className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-3 py-1 text-xs font-medium text-[var(--app-muted)]">
+          <span className="rounded-full border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-2.5 py-1 text-xs font-medium text-[var(--app-muted)]">
             {formatPrivacy(memory.privacy)}
           </span>
         </div>
 
         <Link href={`/memory/${memory.id}`}>
-          <h3 className="font-brand mb-2 text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)] transition hover:text-[var(--app-accent)]">
+          <h3 className="font-brand mb-1 text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)] transition hover:text-[var(--app-accent)]">
             {memory.title || "Untitled memory"}
           </h3>
         </Link>
 
-        <p className="text-[15px] leading-7 text-[var(--app-muted)]">
+        <p className="max-h-[72px] overflow-hidden text-sm leading-6 text-[var(--app-muted)]">
           {memory.content}
         </p>
-
-        {memory.tags.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {memory.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full bg-[var(--app-surface-soft)] px-3 py-1 text-xs font-medium text-[var(--app-muted)]"
-              >
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
 
         <MemoryEngagementBar
           memoryId={memory.id}
@@ -497,13 +569,13 @@ function AuthorAvatar({ memory }: { memory: FeedMemory }) {
       <img
         src={memory.author.avatarUrl}
         alt={memory.author.fullName}
-        className="size-11 shrink-0 rounded-2xl object-cover"
+        className="size-10 shrink-0 rounded-2xl object-cover"
       />
     );
   }
 
   return (
-    <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-soft)] font-semibold text-[var(--app-accent)]">
+    <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-soft)] font-semibold text-[var(--app-accent)]">
       {memory.author.fullName[0] ?? "M"}
     </div>
   );
@@ -511,25 +583,20 @@ function AuthorAvatar({ memory }: { memory: FeedMemory }) {
 
 function EmptyFeed() {
   return (
-    <section className="mem-card rounded-[2rem] p-8 text-center">
-      <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-[1.4rem] bg-[var(--app-soft)] text-[var(--app-accent)]">
-        <ImagePlus size={24} />
+    <section className="mem-card rounded-[1.6rem] p-4 text-center">
+      <div className="mx-auto mb-3 flex size-11 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+        <ImagePlus size={20} />
       </div>
 
-      <h2 className="font-brand text-2xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+      <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
         No memories yet
       </h2>
 
-      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--app-muted)]">
-        Create your first memory with words, mood, privacy, and media. It will
-        appear here after saving.
-      </p>
-
       <Link
         href="/create/memory"
-        className="mt-6 inline-flex h-12 items-center justify-center rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--app-accent-hover)]"
+        className="mt-4 inline-flex h-10 items-center justify-center rounded-2xl bg-[var(--app-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--app-accent-hover)]"
       >
-        Write your first Memory
+        Write Memory
       </Link>
     </section>
   );

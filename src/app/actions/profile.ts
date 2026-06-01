@@ -41,7 +41,7 @@ const UpdateProfileSchema = z.object({
     .trim()
     .toLowerCase()
     .min(3, "Username must be at least 3 characters.")
-    .max(30, "Username is too long.")
+    .max(24, "Username is too long.")
     .regex(
       /^[a-z0-9_]+$/,
       "Username can only contain lowercase letters, numbers, and underscore."
@@ -156,14 +156,14 @@ export async function updateProfileAction(
     };
   }
 
-  const { data: existingPublicProfile } = await supabase
-    .from("public_profiles")
+  const { data: existingProfile } = await supabase
+    .from("profiles")
     .select("avatar_asset_id, cover_asset_id")
     .eq("id", user.id)
     .maybeSingle();
 
   const { data: usernameOwner, error: usernameError } = await supabase
-    .from("public_profiles")
+    .from("profiles")
     .select("id")
     .eq("username", username)
     .neq("id", user.id)
@@ -212,42 +212,19 @@ export async function updateProfileAction(
 
   const oldAvatarAssetId =
     avatarAsset &&
-    existingPublicProfile?.avatar_asset_id &&
-    existingPublicProfile.avatar_asset_id !== avatarAsset.id
-      ? existingPublicProfile.avatar_asset_id
+    existingProfile?.avatar_asset_id &&
+    existingProfile.avatar_asset_id !== avatarAsset.id
+      ? existingProfile.avatar_asset_id
       : null;
 
   const oldCoverAssetId =
     coverAsset &&
-    existingPublicProfile?.cover_asset_id &&
-    existingPublicProfile.cover_asset_id !== coverAsset.id
-      ? existingPublicProfile.cover_asset_id
+    existingProfile?.cover_asset_id &&
+    existingProfile.cover_asset_id !== coverAsset.id
+      ? existingProfile.cover_asset_id
       : null;
 
-  const privateProfileUpdate: Record<string, unknown> = {
-    username,
-    full_name: fullName,
-    bio,
-    updated_at: new Date().toISOString(),
-  };
-
-  if (avatarAsset) {
-    privateProfileUpdate.avatar_url = avatarAsset.public_url;
-  }
-
-  const { error: privateProfileError } = await supabase
-    .from("profiles")
-    .update(privateProfileUpdate)
-    .eq("id", user.id);
-
-  if (privateProfileError) {
-    return {
-      message: privateProfileError.message || "Unable to update profile.",
-    };
-  }
-
-  const publicProfileUpdate: Record<string, unknown> = {
-    id: user.id,
+  const profileUpdate: Record<string, unknown> = {
     username,
     full_name: fullName,
     bio,
@@ -256,25 +233,23 @@ export async function updateProfileAction(
   };
 
   if (avatarAsset) {
-    publicProfileUpdate.avatar_asset_id = avatarAsset.id;
-    publicProfileUpdate.avatar_url = avatarAsset.public_url;
+    profileUpdate.avatar_asset_id = avatarAsset.id;
+    profileUpdate.avatar_url = avatarAsset.public_url;
   }
 
   if (coverAsset) {
-    publicProfileUpdate.cover_asset_id = coverAsset.id;
-    publicProfileUpdate.cover_url = coverAsset.public_url;
+    profileUpdate.cover_asset_id = coverAsset.id;
+    profileUpdate.cover_url = coverAsset.public_url;
   }
 
-  const { error: publicProfileError } = await supabase
-    .from("public_profiles")
-    .upsert(publicProfileUpdate, {
-      onConflict: "id",
-    });
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update(profileUpdate)
+    .eq("id", user.id);
 
-  if (publicProfileError) {
+  if (profileError) {
     return {
-      message:
-        publicProfileError.message || "Unable to update public profile.",
+      message: profileError.message || "Unable to update profile.",
     };
   }
 

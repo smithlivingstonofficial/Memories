@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
   CalendarDays,
@@ -14,7 +15,7 @@ type CreateOption = {
   title: string;
   description: string;
   href: string;
-  icon: React.ComponentType<any>;
+  icon: LucideIcon;
   status: "available" | "coming";
   cta: string;
   iconClass: string;

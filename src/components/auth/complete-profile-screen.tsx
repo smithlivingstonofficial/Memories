@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import type { FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -16,10 +17,6 @@ import {
   Sparkles,
   UserRound,
 } from "lucide-react";
-import {
-  completeProfileAction,
-  type CompleteProfileState,
-} from "@/app/actions/auth";
 
 type CompleteProfileScreenProps = {
   email: string;
@@ -35,6 +32,21 @@ type CompleteProfileScreenProps = {
 };
 
 type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid";
+
+type CompleteProfileState = {
+  success?: boolean;
+  message?: string;
+  errors?: {
+    username?: string[];
+    fullName?: string[];
+    mobileCountryCode?: string[];
+    mobileNumber?: string[];
+    dateOfBirth?: string[];
+    bio?: string[];
+    password?: string[];
+    confirmPassword?: string[];
+  };
+};
 
 const initialState: CompleteProfileState = {
   message: "",
@@ -94,12 +106,10 @@ export function CompleteProfileScreen({
   initialProfile,
 }: CompleteProfileScreenProps) {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const initialUsername = (initialProfile.username ?? "").trim().toLowerCase();
 
-  const [state, formAction, pending] = useActionState(
-    completeProfileAction,
-    initialState
-  );
-
+  const [state, setState] = useState<CompleteProfileState>(initialState);
+  const [pending, setPending] = useState(false);
   const errors = state.errors as Record<string, string[] | undefined> | undefined;
 
   const [step, setStep] = useState(0);
@@ -162,23 +172,55 @@ export function CompleteProfileScreen({
     const cleanUsername = username.trim().toLowerCase();
 
     if (!cleanUsername) {
-      setUsernameStatus("idle");
-      setUsernameMessage("");
-      return;
+      const timeoutId = window.setTimeout(() => {
+        setUsernameStatus("idle");
+        setUsernameMessage("");
+      }, 0);
+
+      return () => {
+        window.clearTimeout(timeoutId);
+      };
     }
 
-    if (!/^[a-z0-9_]{3,24}$/.test(cleanUsername)) {
-      setUsernameStatus("invalid");
-      setUsernameMessage("Use 3–24 lowercase letters, numbers, or underscore.");
-      return;
+    if (cleanUsername === initialUsername) {
+      const timeoutId = window.setTimeout(() => {
+        setUsernameStatus("available");
+        setUsernameMessage("This is your current username.");
+      }, 0);
+
+      return () => {
+        window.clearTimeout(timeoutId);
+      };
     }
 
     const controller = new AbortController();
 
-    setUsernameStatus("checking");
-    setUsernameMessage("Checking availability...");
+    if (!/^[a-z0-9_]{3,24}$/.test(cleanUsername)) {
+      const timeoutId = window.setTimeout(() => {
+        setUsernameStatus("invalid");
+        setUsernameMessage(
+          "Use 3-24 lowercase letters, numbers, or underscore."
+        );
+      }, 0);
+
+      return () => {
+        controller.abort();
+        window.clearTimeout(timeoutId);
+      };
+    }
 
     const timeoutId = window.setTimeout(async () => {
+      setUsernameStatus("checking");
+      setUsernameMessage("Checking availability...");
+
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, 450);
+      });
+
+      if (controller.signal.aborted) {
+        return;
+      }
+
       try {
         const response = await fetch(
           `/api/profile/check-username?username=${encodeURIComponent(
@@ -186,6 +228,10 @@ export function CompleteProfileScreen({
           )}`,
           { signal: controller.signal }
         );
+
+        if (!response.ok) {
+          throw new Error("Username check failed.");
+        }
 
         const result = (await response.json()) as {
           available: boolean;
@@ -200,38 +246,44 @@ export function CompleteProfileScreen({
           setUsernameMessage("Unable to check now.");
         }
       }
-    }, 450);
+    }, 0);
 
     return () => {
       controller.abort();
       window.clearTimeout(timeoutId);
     };
-  }, [username]);
+  }, [initialUsername, username]);
 
   useEffect(() => {
-    if (errors?.username || errors?.fullName) {
-      setStep(0);
-      return;
-    }
+    const timeoutId = window.setTimeout(() => {
+      if (errors?.username || errors?.fullName) {
+        setStep(0);
+        return;
+      }
 
-    if (errors?.dateOfBirth) {
-      setStep(1);
-      return;
-    }
+      if (errors?.dateOfBirth) {
+        setStep(1);
+        return;
+      }
 
-    if (errors?.mobileNumber || errors?.mobileCountryCode) {
-      setStep(2);
-      return;
-    }
+      if (errors?.mobileNumber || errors?.mobileCountryCode) {
+        setStep(2);
+        return;
+      }
 
-    if (errors?.bio || errors?.avatarFile) {
-      setStep(3);
-      return;
-    }
+      if (errors?.bio || errors?.avatarFile) {
+        setStep(3);
+        return;
+      }
 
-    if (errors?.password || errors?.confirmPassword) {
-      setStep(4);
-    }
+      if (errors?.password || errors?.confirmPassword) {
+        setStep(4);
+      }
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [errors]);
 
   function goNext() {
@@ -272,7 +324,7 @@ export function CompleteProfileScreen({
     }
 
     if (step === 2) {
-      if (!/^[0-9]{6,15}$/.test(mobileNumber.trim())) {
+      if (!/^[0-9]{7,15}$/.test(mobileNumber.trim())) {
         setClientError("Enter a valid mobile number without spaces.");
         return;
       }
@@ -307,13 +359,65 @@ export function CompleteProfileScreen({
     setAvatarPreview(URL.createObjectURL(file));
   }
 
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setClientError("");
+    setState(initialState);
+    setPending(true);
+
+    try {
+      const response = await fetch("/api/auth/complete-profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username,
+          fullName,
+          mobileCountryCode,
+          mobileNumber,
+          dateOfBirth,
+          bio,
+          password,
+          confirmPassword,
+        }),
+      });
+
+      const result = (await response.json()) as CompleteProfileState & {
+        redirectTo?: string;
+      };
+
+      if (!response.ok || !result.success) {
+        setState({
+          success: false,
+          message: result.message || "Unable to complete profile setup.",
+          errors: result.errors ?? {},
+        });
+        return;
+      }
+
+      window.location.assign(result.redirectTo ?? "/home");
+    } catch (error) {
+      setState({
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to complete profile setup. Please try again.",
+        errors: {},
+      });
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
     <main className="h-[100svh] overflow-hidden bg-[#f8fafc] text-[#0f172a]">
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_12%_10%,rgba(99,102,241,0.10),transparent_30%),radial-gradient(circle_at_88%_88%,rgba(255,228,230,0.70),transparent_36%),linear-gradient(180deg,#ffffff_0%,#f8fafc_52%,#f8fafc_100%)]" />
 
       <section className="mx-auto flex h-full w-full max-w-[1180px] items-center justify-center p-3 sm:p-5 lg:p-6">
         <form
-          action={formAction}
+          onSubmit={handleSubmit}
           className="grid h-full max-h-[780px] w-full overflow-hidden rounded-[2rem] border border-white/80 bg-white/[0.92] shadow-[0_32px_110px_rgba(15,23,42,0.11)] backdrop-blur-2xl lg:grid-cols-[360px_minmax(0,1fr)]"
         >
           <input type="hidden" name="username" value={username} />
@@ -337,7 +441,6 @@ export function CompleteProfileScreen({
           <input
             ref={avatarInputRef}
             type="file"
-            name="avatarFile"
             accept="image/*"
             className="hidden"
             onChange={(event) =>

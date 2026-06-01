@@ -1,12 +1,5 @@
 import Link from "next/link";
-import {
-  Compass,
-  ImagePlus,
-  LockKeyhole,
-  Search,
-  Sparkles,
-  Users,
-} from "lucide-react";
+import { Compass, Search, Sparkles, Users } from "lucide-react";
 import { FollowProfileButton } from "@/components/profile/follow-profile-button";
 import type {
   DiscoverPeopleData,

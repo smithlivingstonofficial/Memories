@@ -71,7 +71,10 @@ export type CompleteProfileState = {
   errors?: {
     username?: string[];
     fullName?: string[];
+    mobileCountryCode?: string[];
     mobileNumber?: string[];
+    dateOfBirth?: string[];
+    bio?: string[];
     password?: string[];
     confirmPassword?: string[];
   };
@@ -100,8 +103,31 @@ const CompleteProfileSchema = z
       .string()
       .trim()
       .min(7, "Enter a valid mobile number.")
-      .max(20, "Mobile number is too long.")
-      .regex(/^[+0-9 ()-]+$/, "Enter a valid mobile number."),
+      .max(15, "Mobile number is too long.")
+      .regex(/^[0-9]+$/, "Enter numbers only."),
+
+    mobileCountryCode: z
+      .string()
+      .trim()
+      .min(2, "Select a country code.")
+      .max(8, "Country code is too long.")
+      .regex(/^\+[0-9]{1,6}$/, "Select a valid country code."),
+
+    dateOfBirth: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Select your date of birth.")
+      .refine((value) => {
+        const date = new Date(`${value}T00:00:00.000Z`);
+        return Number.isFinite(date.getTime()) && date <= new Date();
+      }, "Date of birth cannot be in the future."),
+
+    bio: z
+      .string()
+      .trim()
+      .max(180, "Bio must be 180 characters or less.")
+      .optional()
+      .transform((value) => (value && value.length > 0 ? value : null)),
 
     password: z
       .string()
@@ -124,7 +150,10 @@ export async function completeProfileAction(
   const validatedFields = CompleteProfileSchema.safeParse({
     username: formData.get("username"),
     fullName: formData.get("fullName"),
+    mobileCountryCode: formData.get("mobileCountryCode"),
     mobileNumber: formData.get("mobileNumber"),
+    dateOfBirth: formData.get("dateOfBirth"),
+    bio: formData.get("bio"),
     password: formData.get("password"),
     confirmPassword: formData.get("confirmPassword"),
   });
@@ -136,78 +165,100 @@ export async function completeProfileAction(
     };
   }
 
-  const { username, fullName, mobileNumber, password } = validatedFields.data;
-
-  const supabase = await createClient();
-
   const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return {
-      message: "Your session expired. Please login again.",
-    };
-  }
-
-  if (!hasGoogleIdentity(user)) {
-    await supabase.auth.signOut();
-
-    return {
-      message:
-        "For first-time signup, please verify your account using Google sign in.",
-    };
-  }
-
-  if (!user.email) {
-    return {
-      message: "Your Google account does not have a valid email address.",
-    };
-  }
-
-  const { error: passwordError } = await supabase.auth.updateUser({
+    username,
+    fullName,
+    mobileCountryCode,
+    mobileNumber,
+    dateOfBirth,
+    bio,
     password,
-  });
+  } = validatedFields.data;
 
-  if (passwordError) {
-    return {
-      message: passwordError.message || "Unable to set your password.",
-    };
-  }
+  try {
+    const supabase = await createClient();
 
-  const { error: profileError } = await supabase.from("profiles").upsert(
-    {
-      id: user.id,
-      username,
-      full_name: fullName,
-      mobile_number: mobileNumber,
-      profile_completed: true,
-      password_set: true,
-      signup_method: "google",
-      avatar_url:
-        user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null,
-    },
-    {
-      onConflict: "id",
-    }
-  );
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-  if (profileError) {
-    if (
-      profileError.code === "23505" ||
-      profileError.message.toLowerCase().includes("duplicate")
-    ) {
+    if (userError || !user) {
       return {
-        message: "Username is already taken.",
-        errors: {
-          username: ["This username is already taken."],
-        },
+        message: "Your session expired. Please login again.",
       };
     }
 
+    if (!hasGoogleIdentity(user)) {
+      await supabase.auth.signOut();
+
+      return {
+        message:
+          "For first-time signup, please verify your account using Google sign in.",
+      };
+    }
+
+    if (!user.email) {
+      return {
+        message: "Your Google account does not have a valid email address.",
+      };
+    }
+
+    const { error: passwordError } = await supabase.auth.updateUser({
+      password,
+    });
+
+    if (passwordError) {
+      return {
+        message: passwordError.message || "Unable to set your password.",
+      };
+    }
+
+    const { error: profileError } = await supabase.from("profiles").upsert(
+      {
+        id: user.id,
+        username,
+        full_name: fullName,
+        bio,
+        mobile_country_code: mobileCountryCode,
+        mobile_number: mobileNumber,
+        date_of_birth: dateOfBirth,
+        profile_completed: true,
+        password_set: true,
+        signup_method: "google",
+        account_visibility: "public",
+        is_searchable: true,
+        avatar_url:
+          user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null,
+      },
+      {
+        onConflict: "id",
+      }
+    );
+
+    if (profileError) {
+      if (
+        profileError.code === "23505" ||
+        profileError.message.toLowerCase().includes("duplicate")
+      ) {
+        return {
+          message: "Username is already taken.",
+          errors: {
+            username: ["This username is already taken."],
+          },
+        };
+      }
+
+      return {
+        message: profileError.message || "Unable to complete profile setup.",
+      };
+    }
+  } catch (error) {
     return {
-      message: profileError.message || "Unable to complete profile setup.",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unable to complete profile setup. Please try again.",
     };
   }
 

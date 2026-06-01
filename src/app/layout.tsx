@@ -26,7 +26,11 @@ const themeScript = `
 (function () {
   try {
     var savedTheme = localStorage.getItem("memories-theme");
-    var theme = savedTheme === "dark" ? "dark" : "light";
+    var theme = savedTheme === "dark"
+      ? "dark"
+      : savedTheme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
     document.documentElement.setAttribute("data-theme", theme);
     document.documentElement.style.colorScheme = theme;
   } catch (e) {

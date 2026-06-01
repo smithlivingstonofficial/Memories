@@ -86,13 +86,15 @@ export function DesktopSidebar({
         ))}
       </nav>
 
-      <div
+      <Link
+        href="/profile"
         className={cn(
-          "shrink-0 border border-[var(--app-border)] bg-[var(--app-surface-strong)] shadow-[0_18px_50px_var(--app-shadow)]",
+          "shrink-0 border border-[var(--app-border)] bg-[var(--app-surface-strong)] shadow-[0_18px_50px_var(--app-shadow)] transition hover:border-[var(--app-accent)] hover:bg-[var(--app-soft)]",
           collapsed
             ? "mx-auto mt-4 flex size-14 items-center justify-center rounded-[1.35rem]"
             : "mt-4 rounded-[1.5rem] p-4"
         )}
+        aria-label="Open profile"
       >
         <div
           className={cn(
@@ -113,7 +115,7 @@ export function DesktopSidebar({
             </div>
           )}
         </div>
-      </div>
+      </Link>
     </aside>
   );
 }

@@ -41,6 +41,7 @@ export default async function DiaryDayPage({ params }: DiaryDayPageProps) {
   return (
     <AppLayout
       user={{
+        id: user.id,
         fullName: profile.full_name ?? "Memories User",
         username: profile.username ?? "memories_user",
         avatarUrl: profile.avatar_url ?? null,

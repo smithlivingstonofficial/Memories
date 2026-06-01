@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -24,6 +24,11 @@ import { uploadMedia } from "@/lib/media/upload-media";
 import { Button } from "@/components/ui/button";
 import { MoodSelector } from "@/components/create/mood-selector";
 import { MEMORY_MOODS } from "@/lib/moods";
+import {
+  getQuickMemoryDraftKey,
+  QUICK_MEMORY_CLEAR_FLAG,
+  type QuickMemoryDraft,
+} from "@/lib/quick-memory-draft";
 import { cn } from "@/lib/utils";
 
 const initialState: CreateMemoryState = {
@@ -60,7 +65,9 @@ type UploadedAsset = {
 
 type CreateMemoryScreenProps = {
   initialEntryDate?: string;
+  draftSource?: "quick";
   user?: {
+    id?: string;
     fullName: string;
     username: string;
     avatarUrl: string | null;
@@ -69,6 +76,7 @@ type CreateMemoryScreenProps = {
 
 export function CreateMemoryScreen({
   initialEntryDate,
+  draftSource,
   user,
 }: CreateMemoryScreenProps) {
   const [state, formAction, pending] = useActionState(
@@ -104,6 +112,25 @@ export function CreateMemoryScreen({
   }, [content]);
 
   const readingTime = Math.max(1, Math.ceil(wordCount / 180));
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      const draft = readQuickDraft(user?.id, draftSource);
+
+      setTitle(draft.title);
+      setContent(draft.content);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [draftSource, user?.id]);
+
+  useEffect(() => {
+    if (draftSource === "quick" && user?.id && state.message) {
+      sessionStorage.removeItem(QUICK_MEMORY_CLEAR_FLAG);
+    }
+  }, [draftSource, state.message, user?.id]);
 
   async function handleFileChange(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -160,6 +187,41 @@ export function CreateMemoryScreen({
     );
   }
 
+  function saveQuickDraft(nextTitle: string, nextContent: string) {
+    if (draftSource !== "quick" || !user?.id) return;
+
+    const draftKey = getQuickMemoryDraftKey(user.id);
+
+    if (!nextTitle.trim() && !nextContent.trim()) {
+      localStorage.removeItem(draftKey);
+      return;
+    }
+
+    const draft: QuickMemoryDraft = {
+      title: nextTitle,
+      content: nextContent,
+      updatedAt: new Date().toISOString(),
+    };
+
+    localStorage.setItem(draftKey, JSON.stringify(draft));
+  }
+
+  function handleTitleChange(value: string) {
+    setTitle(value);
+    saveQuickDraft(value, content);
+  }
+
+  function handleContentChange(value: string) {
+    setContent(value);
+    saveQuickDraft(title, value);
+  }
+
+  function handleSubmit() {
+    if (draftSource === "quick" && user?.id) {
+      sessionStorage.setItem(QUICK_MEMORY_CLEAR_FLAG, user.id);
+    }
+  }
+
   return (
     <div className="mx-auto w-full max-w-[1500px]">
       <section className="mem-card mb-5 rounded-[2rem] p-5 sm:p-6">
@@ -205,7 +267,7 @@ export function CreateMemoryScreen({
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <section className="mem-card rounded-[2rem] p-5 sm:p-6">
-          <form action={formAction} className="space-y-6">
+          <form action={formAction} onSubmit={handleSubmit} className="space-y-6">
             <input
               type="hidden"
               name="moods"
@@ -267,7 +329,7 @@ export function CreateMemoryScreen({
               <input
                 name="title"
                 value={title}
-                onChange={(event) => setTitle(event.target.value)}
+                onChange={(event) => handleTitleChange(event.target.value)}
                 placeholder="Give this memory a gentle title..."
                 className="h-14 w-full border-none bg-transparent font-brand text-2xl font-semibold tracking-[-0.04em] text-[var(--app-text)] outline-none placeholder:text-[var(--app-faint)] sm:text-3xl"
               />
@@ -283,7 +345,7 @@ export function CreateMemoryScreen({
               <textarea
                 name="content"
                 value={content}
-                onChange={(event) => setContent(event.target.value)}
+                onChange={(event) => handleContentChange(event.target.value)}
                 placeholder="Start writing what happened, how it felt, and why you want to remember it..."
                 rows={12}
                 className="min-h-[320px] w-full resize-none border-none bg-transparent text-[16px] leading-8 text-[var(--app-text)] outline-none placeholder:text-[var(--app-faint)]"
@@ -678,6 +740,40 @@ function isValidDateInput(value?: string) {
 
 function normalizeDateInput(value?: string) {
   return isValidDateInput(value) ? value! : getTodayInputValue();
+}
+
+function readQuickDraft(
+  userId?: string,
+  draftSource?: "quick"
+): Pick<QuickMemoryDraft, "title" | "content"> {
+  if (draftSource !== "quick" || !userId || typeof window === "undefined") {
+    return {
+      title: "",
+      content: "",
+    };
+  }
+
+  try {
+    const rawDraft = localStorage.getItem(getQuickMemoryDraftKey(userId));
+    if (!rawDraft) {
+      return {
+        title: "",
+        content: "",
+      };
+    }
+
+    const draft = JSON.parse(rawDraft) as Partial<QuickMemoryDraft>;
+
+    return {
+      title: typeof draft.title === "string" ? draft.title : "",
+      content: typeof draft.content === "string" ? draft.content : "",
+    };
+  } catch {
+    return {
+      title: "",
+      content: "",
+    };
+  }
 }
 
 function formatDateLabel(value: string) {

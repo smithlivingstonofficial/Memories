@@ -6,55 +6,62 @@ function isValidUsername(username: string) {
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const username = (searchParams.get("username") ?? "").trim().toLowerCase();
+  try {
+    const { searchParams } = new URL(request.url);
+    const username = (searchParams.get("username") ?? "").trim().toLowerCase();
 
-  if (!isValidUsername(username)) {
-    return NextResponse.json({
-      available: false,
-      message:
-        "Use 3–24 characters. Lowercase letters, numbers, and underscore only.",
-    });
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json(
-      {
+    if (!isValidUsername(username)) {
+      return NextResponse.json({
         available: false,
-        message: "Please login again.",
-      },
-      { status: 401 }
-    );
-  }
+        message:
+          "Use 3-24 characters. Lowercase letters, numbers, and underscore only.",
+      });
+    }
 
-  const { data: existingProfile, error } = await supabase
-    .from("public_profiles")
-    .select("id")
-    .eq("username", username)
-    .maybeSingle();
+    const supabase = await createClient();
 
-  if (error) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        {
+          available: false,
+          message: "Please login again.",
+        },
+        { status: 401 }
+      );
+    }
+
+    const { data: existingProfile, error } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("username", username)
+      .maybeSingle();
+
+    if (error) {
+      return NextResponse.json({
+        available: false,
+        message: error.message,
+      });
+    }
+
+    if (existingProfile && existingProfile.id !== user.id) {
+      return NextResponse.json({
+        available: false,
+        message: "This username is already taken.",
+      });
+    }
+
+    return NextResponse.json({
+      available: true,
+      message: "Username is available.",
+    });
+  } catch {
     return NextResponse.json({
       available: false,
-      message: error.message,
+      message: "Unable to check username right now.",
     });
   }
-
-  if (existingProfile && existingProfile.id !== user.id) {
-    return NextResponse.json({
-      available: false,
-      message: "This username is already taken.",
-    });
-  }
-
-  return NextResponse.json({
-    available: true,
-    message: "Username is available.",
-  });
 }

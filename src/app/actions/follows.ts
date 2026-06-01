@@ -198,7 +198,7 @@ export async function respondFollowRequestAction({
   }
 
   const { data: currentProfile } = await supabase
-    .from("public_profiles")
+    .from("profiles")
     .select("username")
     .eq("id", user.id)
     .maybeSingle();

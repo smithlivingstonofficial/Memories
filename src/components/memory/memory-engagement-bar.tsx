@@ -73,9 +73,15 @@ export function MemoryEngagementBar({
 
   useEffect(() => {
     if (reflectionState.success && reflectionState.reflectionId) {
-      setReflectionCount((current) => current + 1);
-      formRef.current?.reset();
-      router.refresh();
+      const timeoutId = window.setTimeout(() => {
+        setReflectionCount((current) => current + 1);
+        formRef.current?.reset();
+        router.refresh();
+      }, 0);
+
+      return () => {
+        window.clearTimeout(timeoutId);
+      };
     }
   }, [reflectionState.success, reflectionState.reflectionId, router]);
 

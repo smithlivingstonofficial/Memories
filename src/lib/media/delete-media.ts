@@ -53,7 +53,7 @@ export async function deleteMediaAssetsCompletely({
       .eq("asset_id", asset.id);
 
     const { data: profileRefs } = await supabase
-      .from("public_profiles")
+      .from("profiles")
       .select("id")
       .or(`avatar_asset_id.eq.${asset.id},cover_asset_id.eq.${asset.id}`)
       .limit(1);

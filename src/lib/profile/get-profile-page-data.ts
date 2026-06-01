@@ -114,7 +114,7 @@ export async function getProfilePageData({
   };
 }): Promise<ProfilePageData> {
   const { data: publicProfile } = await supabase
-    .from("public_profiles")
+    .from("profiles")
     .select(
       "id, username, full_name, bio, avatar_url, cover_url, avatar_asset_id, cover_asset_id, is_searchable, account_visibility"
     )

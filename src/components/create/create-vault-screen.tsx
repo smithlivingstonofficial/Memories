@@ -10,7 +10,6 @@ import {
   Loader2,
   LockKeyhole,
   ShieldCheck,
-  Sparkles,
   Trash2,
   UploadCloud,
 } from "lucide-react";

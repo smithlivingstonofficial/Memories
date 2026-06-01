@@ -40,6 +40,7 @@ export default async function EditProfilePage() {
   return (
     <AppLayout
       user={{
+        id: user.id,
         fullName: data.profile.fullName,
         username: data.profile.username,
         avatarUrl: data.profile.avatarUrl,

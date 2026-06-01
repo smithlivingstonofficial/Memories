@@ -6,7 +6,6 @@ import {
   ImagePlus,
   LockKeyhole,
   MapPin,
-  MessageCircle,
   PenLine,
 } from "lucide-react";
 import { FollowProfileButton } from "@/components/profile/follow-profile-button";

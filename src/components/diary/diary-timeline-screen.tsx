@@ -11,7 +11,6 @@ import {
   Search,
   Sparkles,
   Star,
-  Tags,
 } from "lucide-react";
 import type {
   DiaryTimelineEntry,

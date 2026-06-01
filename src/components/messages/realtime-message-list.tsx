@@ -42,7 +42,13 @@ export function RealtimeMessageList({
     useState<MessageThreadItem[]>(initialMessages);
 
   useEffect(() => {
-    setMessages(initialMessages);
+    const timeoutId = window.setTimeout(() => {
+      setMessages(initialMessages);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [initialMessages]);
 
   useEffect(() => {

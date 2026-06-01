@@ -68,7 +68,13 @@ export function MomentViewerScreen({ data }: MomentViewerScreenProps) {
   }, [navigation.previousMomentId, router]);
 
   useEffect(() => {
-    setProgress(0);
+    const timeoutId = window.setTimeout(() => {
+      setProgress(0);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [moment.id]);
 
   useEffect(() => {

@@ -7,6 +7,7 @@ import { normalizeEntryDate } from "@/lib/diary/entry-date";
 type CreateMemoryPageProps = {
   searchParams?: Promise<{
     date?: string;
+    draft?: string;
   }>;
 };
 
@@ -15,6 +16,7 @@ export default async function CreateMemoryPage({
 }: CreateMemoryPageProps) {
   const params = await searchParams;
   const initialEntryDate = normalizeEntryDate(params?.date);
+  const draftSource = params?.draft === "quick" ? "quick" : undefined;
 
   const supabase = await createClient();
 
@@ -39,6 +41,7 @@ export default async function CreateMemoryPage({
   return (
     <AppLayout
       user={{
+        id: user.id,
         fullName: profile.full_name ?? "Memories User",
         username: profile.username ?? "memories_user",
         avatarUrl: profile.avatar_url ?? null,
@@ -46,7 +49,9 @@ export default async function CreateMemoryPage({
     >
       <CreateMemoryScreen
         initialEntryDate={initialEntryDate}
+        draftSource={draftSource}
         user={{
+          id: user.id,
           fullName: profile.full_name ?? "Memories User",
           username: profile.username ?? "memories_user",
           avatarUrl: profile.avatar_url ?? null,

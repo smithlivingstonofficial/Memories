@@ -34,6 +34,7 @@ export default async function HomePage() {
   return (
     <AppLayout
       user={{
+        id: user.id,
         fullName: profile.full_name ?? "Memories User",
         username: profile.username ?? "memories_user",
         avatarUrl: profile.avatar_url ?? null,

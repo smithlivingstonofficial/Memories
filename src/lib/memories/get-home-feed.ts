@@ -26,6 +26,7 @@ type PublicProfileRow = {
   username: string;
   full_name: string;
   avatar_url: string | null;
+  avatar_asset_id: string | null;
 };
 
 type MediaAssetRow = {
@@ -42,6 +43,31 @@ type MemoryMediaRow = {
   sort_order: number;
   asset: MediaAssetRow | MediaAssetRow[] | null;
 };
+
+async function resolveAssetUrl(
+  supabase: SupabaseClient,
+  assetId: string | null,
+  fallbackUrl: string | null
+) {
+  if (fallbackUrl) return fallbackUrl;
+  if (!assetId) return null;
+
+  const { data: asset } = await supabase
+    .from("media_assets")
+    .select("object_key, public_url, upload_status")
+    .eq("id", assetId)
+    .eq("upload_status", "uploaded")
+    .maybeSingle();
+
+  if (!asset) return null;
+  if (asset.public_url) return asset.public_url;
+
+  if (asset.object_key) {
+    return createSignedReadUrl(asset.object_key);
+  }
+
+  return null;
+}
 
 export async function getHomeFeed(
   supabase: SupabaseClient,
@@ -79,15 +105,19 @@ export async function getHomeFeed(
 
   const { data: profiles } = await supabase
     .from("public_profiles")
-    .select("id, username, full_name, avatar_url")
+    .select("id, username, full_name, avatar_url, avatar_asset_id")
     .in("id", ownerIds);
 
-  const profileMap = new Map(
-    ((profiles ?? []) as PublicProfileRow[]).map((profile) => [
+  const profileMap = new Map<string, PublicProfileRow>();
+  const avatarUrlMap = new Map<string, string | null>();
+
+  for (const profile of (profiles ?? []) as PublicProfileRow[]) {
+    profileMap.set(profile.id, profile);
+    avatarUrlMap.set(
       profile.id,
-      profile,
-    ])
-  );
+      await resolveAssetUrl(supabase, profile.avatar_asset_id, profile.avatar_url)
+    );
+  }
 
   const { data: memoryMediaRows } = await supabase
     .from("memory_media")
@@ -159,7 +189,7 @@ export async function getHomeFeed(
         id: memory.owner_id,
         fullName: profile?.full_name ?? "Memories User",
         username: profile?.username ?? "memories_user",
-        avatarUrl: profile?.avatar_url ?? null,
+        avatarUrl: avatarUrlMap.get(memory.owner_id) ?? null,
       },
       media: mediaByMemoryId.get(memory.id) ?? [],
       engagement: engagementMap.get(memory.id) ?? {

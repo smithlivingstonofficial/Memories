@@ -31,8 +31,7 @@ export function SignupScreen() {
           </h1>
 
           <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
-            Verify your identity with Google first. Then create your Memories
-            password during profile setup.
+            Verify your identity with Google first.
           </p>
         </div>
 

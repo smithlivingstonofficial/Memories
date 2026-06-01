@@ -8,6 +8,10 @@ import { AppTopBar } from "@/components/layout/app-top-bar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { MobileMenuScreen } from "@/components/layout/mobile-menu-screen";
 import type { AppUser } from "@/components/layout/layout-types";
+import {
+  getQuickMemoryDraftKey,
+  QUICK_MEMORY_CLEAR_FLAG,
+} from "@/lib/quick-memory-draft";
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -16,18 +20,27 @@ type AppLayoutProps = {
 
 const SIDEBAR_STORAGE_KEY = "memories-sidebar-collapsed";
 
+function getInitialSidebarCollapsed() {
+  if (typeof window === "undefined") return false;
+
+  return localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
+}
+
 export function AppLayout({ children, user }: AppLayoutProps) {
   const pathname = usePathname();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    getInitialSidebarCollapsed
+  );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const storedValue = localStorage.getItem(SIDEBAR_STORAGE_KEY);
-    setSidebarCollapsed(storedValue === "true");
-  }, []);
+    const timeoutId = window.setTimeout(() => {
+      setMobileMenuOpen(false);
+    }, 0);
 
-  useEffect(() => {
-    setMobileMenuOpen(false);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [pathname]);
 
   useEffect(() => {
@@ -37,6 +50,17 @@ export function AppLayout({ children, user }: AppLayoutProps) {
       document.body.style.overflow = "";
     };
   }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    if (!user.id || !pathname.startsWith("/diary/day/")) return;
+
+    const clearUserId = sessionStorage.getItem(QUICK_MEMORY_CLEAR_FLAG);
+
+    if (clearUserId !== user.id) return;
+
+    localStorage.removeItem(getQuickMemoryDraftKey(user.id));
+    sessionStorage.removeItem(QUICK_MEMORY_CLEAR_FLAG);
+  }, [pathname, user.id]);
 
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
