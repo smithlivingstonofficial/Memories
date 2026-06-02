@@ -1,6 +1,117 @@
 @import "tailwindcss";
 
 /* -------------------------------------------------------------------------- */
+/* TYPOGRAPHY TOKENS (Calculated Sizes & Line-Heights)                        */
+/* -------------------------------------------------------------------------- */
+
+:root {
+  /* Display Tier - Brand prestige (Sora font) */
+  --text-display-lg: 48px;
+  --line-height-display-lg: 72px;
+  --text-display-md: 40px;
+  --line-height-display-md: 60px;
+  --text-display-sm: 32px;
+  --line-height-display-sm: 48px;
+
+  /* Heading Tier (Sora for H1/H2, Jakarta for H3-H5) */
+  --text-h1: 28px;
+  --line-height-h1: 42px;
+  --text-h2: 24px;
+  --line-height-h2: 36px;
+  --text-h3: 20px;
+  --line-height-h3: 30px;
+  --text-h4: 18px;
+  --line-height-h4: 27px;
+  --text-h5: 16px;
+  --line-height-h5: 24px;
+
+  /* Body Tier (Plus Jakarta Sans) */
+  --text-body-lg: 16px;
+  --line-height-body-lg: 24px;
+  --text-body-md: 14px;
+  --line-height-body-md: 21px;
+  --text-body-sm: 13px;
+  --line-height-body-sm: 19.5px;
+
+  /* Caption Tier (Metadata, labels) */
+  --text-caption-md: 12px;
+  --line-height-caption-md: 18px;
+  --text-caption-sm: 11px;
+  --line-height-caption-sm: 16.5px;
+
+  /* Font Weights */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+}
+
+/* -------------------------------------------------------------------------- */
+/* SPACING TOKENS (8px Base Unit)                                             */
+/* -------------------------------------------------------------------------- */
+
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-9: 36px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Component Padding Presets */
+  --padding-tight: var(--space-2);
+  --padding-compact: var(--space-3);
+  --padding-regular: var(--space-4);
+  --padding-comfortable: var(--space-5);
+  --padding-spacious: var(--space-6);
+  --padding-extra: var(--space-8);
+
+  /* Page/Section Margins */
+  --margin-page-mobile: var(--space-4);
+  --margin-page-tablet: var(--space-6);
+  --margin-page-desktop: var(--space-8);
+  --margin-section: var(--space-6);
+  --margin-bottom-mobile: var(--space-7);
+}
+
+/* -------------------------------------------------------------------------- */
+/* SHADOW & ELEVATION TOKENS                                                  */
+/* -------------------------------------------------------------------------- */
+
+:root {
+  --shadow-elevation-1: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-elevation-2: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-elevation-3: 0 12px 32px rgba(0, 0, 0, 0.12);
+  --shadow-elevation-4: 0 24px 80px rgba(0, 0, 0, 0.16);
+  --shadow-elevation-5: 0 24px 80px rgba(0, 0, 0, 0.24);
+  --shadow-elevation-6: 0 20px 60px rgba(0, 0, 0, 0.20);
+}
+
+/* -------------------------------------------------------------------------- */
+/* BORDER RADIUS TOKENS                                                       */
+/* -------------------------------------------------------------------------- */
+
+:root {
+  --radius-small: 4px;
+  --radius-medium: 8px;
+  --radius-large: 12px;
+  --radius-xlarge: 16px;
+  --radius-full: 9999px;
+
+  /* Component-specific radii */
+  --radius-button: var(--radius-large);
+  --radius-card: var(--radius-xlarge);
+  --radius-input: var(--radius-medium);
+  --radius-avatar: var(--radius-full);
+  --radius-modal: var(--radius-xlarge);
+}
+
+/* -------------------------------------------------------------------------- */
 /* BASE FALLBACK TOKENS                                                       */
 /* -------------------------------------------------------------------------- */
 
@@ -35,8 +146,22 @@
   --app-soft: #eef2ff;
   --app-accent: #6366f1;
   --app-accent-hover: #4f46e5;
+  --app-accent-active: #4338ca;
 
   --app-shadow: rgba(15, 23, 42, 0.08);
+
+  /* Semantic Colors */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+
+  /* Indigo Scale */
+  --indigo-50: #f5f3ff;
+  --indigo-100: #eef2ff;
+  --indigo-600: #6366f1;
+  --indigo-700: #4f46e5;
+  --indigo-800: #4338ca;
 
   --app-gradient:
     radial-gradient(circle at 12% 8%, rgba(99, 102, 241, 0.1), transparent 30%),
@@ -127,6 +252,7 @@ html[data-theme="dark"] {
   --app-soft: rgba(99, 102, 241, 0.18);
   --app-accent: #818cf8;
   --app-accent-hover: #6366f1;
+  --app-accent-active: #4f46e5;
 
   --app-shadow: rgba(0, 0, 0, 0.28);
 
@@ -285,6 +411,91 @@ button:disabled {
 
 .font-ui {
   font-family: var(--font-jakarta), system-ui, sans-serif;
+}
+
+/* -------------------------------------------------------------------------- */
+/* TYPOGRAPHY UTILITY CLASSES                                                 */
+/* -------------------------------------------------------------------------- */
+
+/* Display Tier */
+.text-display-lg {
+  font-size: var(--text-display-lg);
+  line-height: var(--line-height-display-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.text-display-md {
+  font-size: var(--text-display-md);
+  line-height: var(--line-height-display-md);
+  font-weight: var(--font-weight-bold);
+}
+
+.text-display-sm {
+  font-size: var(--text-display-sm);
+  line-height: var(--line-height-display-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Heading Tier */
+.text-h1 {
+  font-size: var(--text-h1);
+  line-height: var(--line-height-h1);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-sora), system-ui, sans-serif;
+}
+
+.text-h2 {
+  font-size: var(--text-h2);
+  line-height: var(--line-height-h2);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-sora), system-ui, sans-serif;
+}
+
+.text-h3 {
+  font-size: var(--text-h3);
+  line-height: var(--line-height-h3);
+  font-weight: var(--font-weight-semibold);
+}
+
+.text-h4 {
+  font-size: var(--text-h4);
+  line-height: var(--line-height-h4);
+  font-weight: var(--font-weight-semibold);
+}
+
+.text-h5 {
+  font-size: var(--text-h5);
+  line-height: var(--line-height-h5);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Body Tier */
+.text-body-lg {
+  font-size: var(--text-body-lg);
+  line-height: var(--line-height-body-lg);
+}
+
+.text-body-md {
+  font-size: var(--text-body-md);
+  line-height: var(--line-height-body-md);
+}
+
+.text-body-sm {
+  font-size: var(--text-body-sm);
+  line-height: var(--line-height-body-sm);
+}
+
+/* Caption Tier */
+.text-caption-md {
+  font-size: var(--text-caption-md);
+  line-height: var(--line-height-caption-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.text-caption-sm {
+  font-size: var(--text-caption-sm);
+  line-height: var(--line-height-caption-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
 /* -------------------------------------------------------------------------- */
