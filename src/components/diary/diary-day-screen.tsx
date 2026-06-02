@@ -428,7 +428,7 @@ function formatPrivacy(value: string) {
   const labels: Record<string, string> = {
     public: "Public",
     private: "Private",
-    friends: "Friends",
+    followers: "Followers",
     inner_circle: "Inner Circle",
     vault: "Vault",
   };

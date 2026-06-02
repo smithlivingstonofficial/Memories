@@ -9,7 +9,7 @@ type SupabaseClient = Awaited<
   ReturnType<typeof import("@/lib/supabase/server").createClient>
 >;
 
-type MemoryPrivacy = "private" | "inner_circle" | "friends" | "public" | "vault";
+type MemoryPrivacy = "private" | "followers" | "inner_circle" | "public" | "vault";
 
 type MemoryRow = {
   id: string;
@@ -117,7 +117,7 @@ async function canViewMemory({
   if (memory.owner_id === viewerId) return true;
   if (memory.privacy === "public") return true;
 
-  if (memory.privacy === "friends") {
+  if (memory.privacy === "followers") {
     const { data: followRow } = await supabase
       .from("user_follows")
       .select("id")

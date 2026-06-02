@@ -616,7 +616,7 @@ function formatPrivacy(value: FeedMemory["privacy"]) {
   const labels = {
     private: "Private",
     inner_circle: "Inner Circle",
-    friends: "Friends",
+    followers: "Followers",
     public: "Public",
     vault: "Vault",
   };

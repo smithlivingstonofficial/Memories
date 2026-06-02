@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppLayout } from "@/components/layout/app-layout";
 import { VaultScreen } from "@/components/vault/vault-screen";
+import { VaultAccessScreen } from "@/components/vault/vault-access-screen";
 import { getVaultEntries } from "@/lib/memories/get-vault-entries";
+import { getVaultAccessState } from "@/lib/vault/access";
 
 export default async function VaultPage() {
   const supabase = await createClient();
@@ -28,6 +30,25 @@ export default async function VaultPage() {
   const fullName = profile.full_name ?? "Memories User";
   const username = profile.username ?? "memories_user";
   const avatarUrl = profile.avatar_url ?? null;
+  const vaultAccess = await getVaultAccessState(supabase, user.id);
+
+  if (!vaultAccess.isUnlocked) {
+    return (
+      <AppLayout
+        user={{
+          fullName,
+          username,
+          avatarUrl,
+        }}
+      >
+        <VaultAccessScreen
+          hasPasscode={vaultAccess.hasPasscode}
+          backHref="/home"
+          backLabel="Back to Home"
+        />
+      </AppLayout>
+    );
+  }
 
   const entries = await getVaultEntries(supabase, user.id, {
     fullName,

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { deleteMediaAssetsCompletely } from "@/lib/media/delete-media";
 import { normalizeMoods } from "@/lib/moods";
+import { requireVaultUnlocked } from "@/lib/vault/access";
 
 export type CreateMemoryState = {
   message?: string;
@@ -43,9 +44,10 @@ export type EditMemoryState = {
 
 const MemoryPrivacySchema = z.enum([
   "private",
+  "followers",
   "inner_circle",
-  "friends",
   "public",
+  "vault",
 ]);
 
 const optionalText = (max: number) =>
@@ -163,19 +165,7 @@ const EditMemorySchema = CreateMemorySchema.extend({
   }
 );
 
-const EditVaultEntrySchema = CreateVaultEntrySchema.extend({
-  memoryId: z.string().uuid(),
-  existingMediaAssetIds: ExistingMediaAssetIdsSchema,
-}).refine(
-  (value) => value.existingMediaAssetIds.length + value.mediaAssetIds.length <= 10,
-  {
-    path: ["mediaAssetIds"],
-    message: "You can attach up to 10 media files only.",
-  }
-);
-
 type EditMemoryInput = z.infer<typeof EditMemorySchema>;
-type EditVaultEntryInput = z.infer<typeof EditVaultEntrySchema>;
 
 function getAssetVisibility(
   privacy: z.infer<typeof MemoryPrivacySchema>
@@ -184,6 +174,12 @@ function getAssetVisibility(
   if (privacy === "inner_circle") return "inner_circle";
 
   return "private";
+}
+
+function getMediaPurpose(
+  privacy: z.infer<typeof MemoryPrivacySchema>
+): "memory" | "vault" {
+  return privacy === "vault" ? "vault" : "memory";
 }
 
 /* -------------------------------------------------------------------------- */
@@ -248,6 +244,16 @@ export async function createMemoryAction(
     redirect("/complete-profile");
   }
 
+  if (privacy === "vault") {
+    const unlocked = await requireVaultUnlocked(supabase, user.id);
+
+    if (!unlocked) {
+      return {
+        message: "Unlock your Vault before saving this memory to Vault.",
+      };
+    }
+  }
+
   if (mediaAssetIds.length > 0) {
     const { data: uploadedAssets, error: assetsError } = await supabase
       .from("media_assets")
@@ -271,7 +277,7 @@ export async function createMemoryAction(
     const { error: mediaUpdateError } = await supabase
       .from("media_assets")
       .update({
-        purpose: "memory",
+        purpose: getMediaPurpose(privacy),
         visibility: getAssetVisibility(privacy),
       })
       .eq("owner_id", user.id)
@@ -342,11 +348,12 @@ export async function createMemoryAction(
   revalidatePath("/calendar");
   revalidatePath("/timeline");
   revalidatePath("/profile");
+  revalidatePath("/vault");
   revalidatePath("/create/memory");
   revalidatePath(`/diary/day/${entryDate}`);
   revalidatePath(`/memory/${memory.id}`);
 
-  redirect(`/diary/day/${entryDate}`);
+  redirect(privacy === "vault" ? "/vault" : `/diary/day/${entryDate}`);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -394,6 +401,14 @@ export async function createVaultEntryAction(
 
   if (!profile?.profile_completed || !profile?.password_set) {
     redirect("/complete-profile");
+  }
+
+  const vaultUnlocked = await requireVaultUnlocked(supabase, user.id);
+
+  if (!vaultUnlocked) {
+    return {
+      message: "Unlock your Vault before saving a Vault entry.",
+    };
   }
 
   if (mediaAssetIds.length > 0) {
@@ -521,10 +536,7 @@ export async function editMemoryAction(
     mediaAssetIds: formData.get("mediaAssetIds"),
   };
 
-  const validatedFields =
-    mode === "vault"
-      ? EditVaultEntrySchema.safeParse(payload)
-      : EditMemorySchema.safeParse(payload);
+  const validatedFields = EditMemorySchema.safeParse(payload);
 
   if (!validatedFields.success) {
     return {
@@ -556,7 +568,7 @@ export async function editMemoryAction(
     redirect("/complete-profile");
   }
 
-  const editData = validatedFields.data as EditMemoryInput | EditVaultEntryInput;
+  const editData = validatedFields.data as EditMemoryInput;
 
   const { data: memory, error: memoryError } = await supabase
     .from("memories")
@@ -569,13 +581,23 @@ export async function editMemoryAction(
     return { message: memoryError.message };
   }
 
-  if (!memory || (mode === "vault") !== (memory.privacy === "vault")) {
+  if (!memory) {
     return {
       message:
         mode === "vault"
           ? "Vault entry not found or you do not have permission to edit it."
           : "Memory not found or you do not have permission to edit it.",
     };
+  }
+
+  if (memory.privacy === "vault" || editData.privacy === "vault") {
+    const unlocked = await requireVaultUnlocked(supabase, user.id);
+
+    if (!unlocked) {
+      return {
+        message: "Unlock your Vault before changing Vault privacy.",
+      };
+    }
   }
 
   const { data: currentLinks, error: currentLinksError } = await supabase
@@ -619,11 +641,8 @@ export async function editMemoryAction(
     }
   }
 
-  const visibility =
-    mode === "vault"
-      ? "private"
-      : getAssetVisibility((editData as EditMemoryInput).privacy);
-  const mediaPurpose = mode === "vault" ? "vault" : "memory";
+  const visibility = getAssetVisibility(editData.privacy);
+  const mediaPurpose = getMediaPurpose(editData.privacy);
 
   if (nextAssetIds.length > 0) {
     const { error: mediaUpdateError } = await supabase
@@ -642,28 +661,18 @@ export async function editMemoryAction(
     }
   }
 
-  const updatePayload =
-    mode === "vault"
-      ? {
-          title: editData.title,
-          content: editData.content,
-          mood: editData.moods[0] ?? null,
-          moods: editData.moods,
-          media_count: nextAssetIds.length,
-        }
-      : {
-          title: editData.title,
-          content: editData.content,
-          mood: editData.moods[0] ?? null,
-          moods: editData.moods,
-          privacy: (editData as EditMemoryInput).privacy,
-          location_name: (editData as EditMemoryInput).locationName,
-          tags: (editData as EditMemoryInput).tags,
-          entry_date: (editData as EditMemoryInput).entryDate,
-          entry_timezone:
-            (editData as EditMemoryInput).entryTimezone || "Asia/Kolkata",
-          media_count: nextAssetIds.length,
-        };
+  const updatePayload = {
+    title: editData.title,
+    content: editData.content,
+    mood: editData.moods[0] ?? null,
+    moods: editData.moods,
+    privacy: editData.privacy,
+    location_name: editData.privacy === "vault" ? null : editData.locationName,
+    tags: editData.privacy === "vault" ? [] : editData.tags,
+    entry_date: editData.entryDate,
+    entry_timezone: editData.entryTimezone || "Asia/Kolkata",
+    media_count: nextAssetIds.length,
+  };
 
   const { error: updateError } = await supabase
     .from("memories")
@@ -735,12 +744,10 @@ export async function editMemoryAction(
     revalidatePath(`/diary/day/${memory.entry_date}`);
   }
 
-  if (mode === "memory") {
-    revalidatePath(`/diary/day/${(editData as EditMemoryInput).entryDate}`);
-  }
+  revalidatePath(`/diary/day/${editData.entryDate}`);
 
   redirect(
-    mode === "vault"
+    editData.privacy === "vault"
       ? "/vault"
       : `/memory/${editData.memoryId}`
   );
@@ -787,6 +794,17 @@ export async function deleteMemoryAction(memoryId: string): Promise<{
       success: false,
       message: "Memory not found or you do not have permission to delete it.",
     };
+  }
+
+  if (memory.privacy === "vault") {
+    const unlocked = await requireVaultUnlocked(supabase, user.id);
+
+    if (!unlocked) {
+      return {
+        success: false,
+        message: "Unlock your Vault before deleting a Vault entry.",
+      };
+    }
   }
 
   const { data: mediaLinks, error: mediaLinksError } = await supabase

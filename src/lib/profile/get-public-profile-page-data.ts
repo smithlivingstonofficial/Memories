@@ -37,7 +37,7 @@ type MemoryRow = {
   content: string;
   mood: string | null;
   moods: string[] | null;
-  privacy: "private" | "inner_circle" | "friends" | "public" | "vault";
+  privacy: "private" | "followers" | "inner_circle" | "public" | "vault";
   location_name: string | null;
   tags: string[] | null;
   created_at: string;

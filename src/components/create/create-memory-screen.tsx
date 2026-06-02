@@ -24,6 +24,8 @@ import { uploadMedia } from "@/lib/media/upload-media";
 import { Button } from "@/components/ui/button";
 import { MoodSelector } from "@/components/create/mood-selector";
 import { MEMORY_MOODS } from "@/lib/moods";
+import { MEMORY_PRIVACY_OPTIONS } from "@/lib/memories/privacy";
+import { VaultAccessPanel } from "@/components/vault/vault-access-screen";
 import {
   getQuickMemoryDraftKey,
   QUICK_MEMORY_CLEAR_FLAG,
@@ -35,24 +37,6 @@ const initialState: CreateMemoryState = {
   message: "",
   errors: {},
 };
-
-const privacyOptions = [
-  {
-    value: "private",
-    label: "Private",
-    description: "Only you can see this memory.",
-  },
-  {
-    value: "inner_circle",
-    label: "Inner Circle",
-    description: "Only trusted people can see this.",
-  },
-  {
-    value: "public",
-    label: "Public",
-    description: "Visible in Discover.",
-  },
-] as const;
 
 type UploadedAsset = {
   assetId: string;
@@ -72,12 +56,17 @@ type CreateMemoryScreenProps = {
     username: string;
     avatarUrl: string | null;
   };
+  vaultAccess?: {
+    hasPasscode: boolean;
+    isUnlocked: boolean;
+  };
 };
 
 export function CreateMemoryScreen({
   initialEntryDate,
   draftSource,
   user,
+  vaultAccess,
 }: CreateMemoryScreenProps) {
   const [state, formAction, pending] = useActionState(
     createMemoryAction,
@@ -93,7 +82,7 @@ export function CreateMemoryScreen({
   const [content, setContent] = useState("");
   const [selectedMoods, setSelectedMoods] = useState<string[]>(["Peaceful"]);
   const [privacy, setPrivacy] =
-    useState<(typeof privacyOptions)[number]["value"]>("private");
+    useState<(typeof MEMORY_PRIVACY_OPTIONS)[number]["value"]>("private");
   const [locationName, setLocationName] = useState("");
   const [tags, setTags] = useState("");
   const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>([]);
@@ -101,9 +90,10 @@ export function CreateMemoryScreen({
   const [uploadMessage, setUploadMessage] = useState("");
 
   const selectedPrivacy = useMemo(
-    () => privacyOptions.find((item) => item.value === privacy),
+    () => MEMORY_PRIVACY_OPTIONS.find((item) => item.value === privacy),
     [privacy]
   );
+  const vaultNeedsUnlock = privacy === "vault" && !vaultAccess?.isUnlocked;
 
   const wordCount = useMemo(() => {
     return content.trim().length === 0
@@ -147,7 +137,7 @@ export function CreateMemoryScreen({
       for (const file of selectedFiles) {
         const result = await uploadMedia({
           file,
-          purpose: "memory",
+          purpose: privacy === "vault" ? "vault" : "memory",
           visibility:
             privacy === "public"
               ? "public"
@@ -383,7 +373,7 @@ export function CreateMemoryScreen({
                 <input type="hidden" name="privacy" value={privacy} />
 
                 <div className="space-y-2">
-                  {privacyOptions.map((item) => (
+                  {MEMORY_PRIVACY_OPTIONS.map((item) => (
                     <button
                       key={item.value}
                       type="button"
@@ -408,6 +398,14 @@ export function CreateMemoryScreen({
                     </button>
                   ))}
                 </div>
+
+                {vaultNeedsUnlock && (
+                  <div className="mt-4">
+                    <VaultAccessPanel
+                      hasPasscode={Boolean(vaultAccess?.hasPasscode)}
+                    />
+                  </div>
+                )}
 
                 <FieldError message={state.errors?.privacy?.[0]} />
               </div>
@@ -550,7 +548,7 @@ export function CreateMemoryScreen({
 
                 <Button
                   type="submit"
-                  disabled={pending || uploading}
+                  disabled={pending || uploading || vaultNeedsUnlock}
                   className="h-12 rounded-2xl bg-[var(--app-accent)] text-[15px] font-semibold text-white shadow-[0_16px_38px_rgba(99,102,241,0.24)] hover:bg-[var(--app-accent-hover)] sm:flex-[1.4]"
                 >
                   {pending ? "Saving memory..." : "Save Memory"}

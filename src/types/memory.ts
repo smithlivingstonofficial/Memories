@@ -11,7 +11,7 @@ export type FeedMemory = {
   content: string;
   mood: string | null;
   moods: string[];
-  privacy: "private" | "inner_circle" | "friends" | "public" | "vault";
+  privacy: "private" | "followers" | "inner_circle" | "public" | "vault";
   locationName: string | null;
   tags: string[];
   createdAt: string;

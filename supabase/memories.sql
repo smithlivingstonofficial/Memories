@@ -22,8 +22,8 @@ create table public.memories (
       privacy = any (
         array[
           'private'::text,
+          'followers'::text,
           'inner_circle'::text,
-          'friends'::text,
           'public'::text,
           'vault'::text
         ]

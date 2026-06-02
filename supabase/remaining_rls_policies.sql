@@ -89,7 +89,7 @@ as $$
         m.owner_id = viewer_id
         or m.privacy = 'public'
         or (
-          m.privacy = 'friends'
+          m.privacy = 'followers'
           and public.has_accepted_follow(viewer_id, m.owner_id)
         )
         or (
@@ -187,15 +187,16 @@ grant execute on function public.can_engage_with_memory(uuid, uuid) to authentic
 grant execute on function public.can_view_moment(uuid, uuid) to authenticated;
 grant execute on function public.is_conversation_member(uuid, uuid) to authenticated;
 
--- Extend memory/media visibility beyond owner + public for friends and inner circle.
+-- Extend memory/media visibility beyond owner + public for followers and inner circle.
 
 drop policy if exists "Friends can view shared memories" on public.memories;
-create policy "Friends can view shared memories"
+drop policy if exists "Followers can view shared memories" on public.memories;
+create policy "Followers can view shared memories"
   on public.memories
   for select
   to authenticated
   using (
-    privacy = 'friends'
+    privacy = 'followers'
     and public.has_accepted_follow(auth.uid(), owner_id)
   );
 

@@ -29,7 +29,7 @@ const ReflectionSchema = z.object({
 type MemoryAccessRow = {
   id: string;
   owner_id: string;
-  privacy: "private" | "inner_circle" | "friends" | "public" | "vault";
+  privacy: "private" | "followers" | "inner_circle" | "public" | "vault";
 };
 
 async function canEngageWithMemory({
@@ -57,7 +57,7 @@ async function canEngageWithMemory({
   if (row.owner_id === userId) return true;
   if (row.privacy === "public") return true;
 
-  if (row.privacy === "friends") {
+  if (row.privacy === "followers") {
     const { data: followRow } = await supabase
       .from("user_follows")
       .select("id")

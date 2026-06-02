@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AppLayout } from "@/components/layout/app-layout";
 import { CreateMemoryScreen } from "@/components/create/create-memory-screen";
 import { normalizeEntryDate } from "@/lib/diary/entry-date";
+import { getVaultAccessState } from "@/lib/vault/access";
 
 type CreateMemoryPageProps = {
   searchParams?: Promise<{
@@ -38,6 +39,8 @@ export default async function CreateMemoryPage({
     redirect("/complete-profile");
   }
 
+  const vaultAccess = await getVaultAccessState(supabase, user.id);
+
   return (
     <AppLayout
       user={{
@@ -50,6 +53,7 @@ export default async function CreateMemoryPage({
       <CreateMemoryScreen
         initialEntryDate={initialEntryDate}
         draftSource={draftSource}
+        vaultAccess={vaultAccess}
         user={{
           id: user.id,
           fullName: profile.full_name ?? "Memories User",

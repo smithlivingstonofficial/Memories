@@ -24,39 +24,18 @@ import { MoodSelector } from "@/components/create/mood-selector";
 import { Button } from "@/components/ui/button";
 import { uploadMedia } from "@/lib/media/upload-media";
 import { MEMORY_MOODS, VAULT_MOODS } from "@/lib/moods";
+import { MEMORY_PRIVACY_OPTIONS } from "@/lib/memories/privacy";
 import type {
   EditableMemory,
   EditableMemoryMedia,
 } from "@/lib/memories/get-editable-memory";
+import { VaultAccessPanel } from "@/components/vault/vault-access-screen";
 import { cn } from "@/lib/utils";
 
 const initialState: EditMemoryState = {
   message: "",
   errors: {},
 };
-
-const privacyOptions = [
-  {
-    value: "private",
-    label: "Private",
-    description: "Only you can see this memory.",
-  },
-  {
-    value: "inner_circle",
-    label: "Inner Circle",
-    description: "Only trusted people can see this.",
-  },
-  {
-    value: "friends",
-    label: "Friends",
-    description: "Only accepted friends can see this.",
-  },
-  {
-    value: "public",
-    label: "Public",
-    description: "Visible in Discover.",
-  },
-] as const;
 
 type UploadedAsset = {
   assetId: string;
@@ -68,9 +47,17 @@ type UploadedAsset = {
 type EditMemoryScreenProps = {
   memory: EditableMemory;
   mode: "memory" | "vault";
+  vaultAccess?: {
+    hasPasscode: boolean;
+    isUnlocked: boolean;
+  };
 };
 
-export function EditMemoryScreen({ memory, mode }: EditMemoryScreenProps) {
+export function EditMemoryScreen({
+  memory,
+  mode,
+  vaultAccess,
+}: EditMemoryScreenProps) {
   const isVault = mode === "vault";
   const [state, formAction, pending] = useActionState(
     editMemoryAction,
@@ -88,9 +75,7 @@ export function EditMemoryScreen({ memory, mode }: EditMemoryScreenProps) {
       : [isVault ? "Thoughtful" : "Peaceful"]
   );
   const [privacy, setPrivacy] =
-    useState<(typeof privacyOptions)[number]["value"]>(
-      memory.privacy === "vault" ? "private" : memory.privacy
-    );
+    useState<(typeof MEMORY_PRIVACY_OPTIONS)[number]["value"]>(memory.privacy);
   const [locationName, setLocationName] = useState(memory.locationName);
   const [tags, setTags] = useState(memory.tags.join(", "));
   const [existingMedia, setExistingMedia] = useState(memory.media);
@@ -107,6 +92,7 @@ export function EditMemoryScreen({ memory, mode }: EditMemoryScreenProps) {
   const mediaCount = existingMedia.length + uploadedAssets.length;
   const backHref = isVault ? "/vault" : `/memory/${memory.id}`;
   const moodOptions = isVault ? VAULT_MOODS : MEMORY_MOODS;
+  const vaultNeedsUnlock = privacy === "vault" && !vaultAccess?.isUnlocked;
 
   async function handleFileChange(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -122,8 +108,8 @@ export function EditMemoryScreen({ memory, mode }: EditMemoryScreenProps) {
       for (const file of selectedFiles) {
         const result = await uploadMedia({
           file,
-          purpose: isVault ? "vault" : "memory",
-          visibility: isVault
+          purpose: privacy === "vault" ? "vault" : "memory",
+          visibility: privacy === "vault"
             ? "private"
             : privacy === "public"
               ? "public"
@@ -231,23 +217,21 @@ export function EditMemoryScreen({ memory, mode }: EditMemoryScreenProps) {
               )}
             />
 
-            {!isVault && (
-              <div className="mem-card-strong rounded-[1.7rem] p-4 sm:p-5">
-                <label className="mb-2 flex items-center gap-2 text-sm font-medium text-[var(--app-text)]">
-                  <CalendarDays size={16} />
-                  Entry date
-                </label>
-                <input
-                  type="date"
-                  name="entryDate"
-                  value={entryDate}
-                  required
-                  onChange={(event) => setEntryDate(event.target.value)}
-                  className="h-12 w-full rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 text-sm font-semibold text-[var(--app-text)] outline-none transition focus:border-[var(--app-accent)]"
-                />
-                <FieldError message={state.errors?.entryDate?.[0]} />
-              </div>
-            )}
+            <div className="mem-card-strong rounded-[1.7rem] p-4 sm:p-5">
+              <label className="mb-2 flex items-center gap-2 text-sm font-medium text-[var(--app-text)]">
+                <CalendarDays size={16} />
+                Entry date
+              </label>
+              <input
+                type="date"
+                name="entryDate"
+                value={entryDate}
+                required
+                onChange={(event) => setEntryDate(event.target.value)}
+                className="h-12 w-full rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 text-sm font-semibold text-[var(--app-text)] outline-none transition focus:border-[var(--app-accent)]"
+              />
+              <FieldError message={state.errors?.entryDate?.[0]} />
+            </div>
 
             <div className="mem-card-strong rounded-[1.7rem] p-4 sm:p-5">
               <label className="mb-3 block text-sm font-semibold text-[var(--app-text)]">
@@ -306,43 +290,50 @@ export function EditMemoryScreen({ memory, mode }: EditMemoryScreenProps) {
                 <FieldError message={state.errors?.moods?.[0]} />
               </div>
 
-              {!isVault && (
-                <div className="mem-card-strong rounded-[1.7rem] p-4">
-                  <label className="mb-3 block text-sm font-semibold text-[var(--app-text)]">
-                    Privacy
-                  </label>
-                  <input type="hidden" name="privacy" value={privacy} />
-                  <div className="space-y-2">
-                    {privacyOptions.map((item) => (
-                      <button
-                        key={item.value}
-                        type="button"
-                        onClick={() => setPrivacy(item.value)}
-                        className={cn(
-                          "flex w-full items-start gap-3 rounded-[1.1rem] border p-3 text-left transition-all",
-                          privacy === item.value
-                            ? "border-[var(--app-accent)] bg-[var(--app-soft)] text-[var(--app-accent)]"
-                            : "border-[var(--app-border)] bg-[var(--app-surface-soft)] text-[var(--app-muted)] hover:text-[var(--app-text)]"
-                        )}
-                      >
-                        <LockKeyhole size={17} className="mt-0.5 shrink-0" />
-                        <span>
-                          <span className="block text-sm font-semibold">
-                            {item.label}
-                          </span>
-                          <span className="mt-1 block text-xs leading-5 opacity-75">
-                            {item.description}
-                          </span>
+              <div className="mem-card-strong rounded-[1.7rem] p-4">
+                <label className="mb-3 block text-sm font-semibold text-[var(--app-text)]">
+                  Privacy
+                </label>
+                <input type="hidden" name="privacy" value={privacy} />
+                <div className="space-y-2">
+                  {MEMORY_PRIVACY_OPTIONS.map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => setPrivacy(item.value)}
+                      className={cn(
+                        "flex w-full items-start gap-3 rounded-[1.1rem] border p-3 text-left transition-all",
+                        privacy === item.value
+                          ? "border-[var(--app-accent)] bg-[var(--app-soft)] text-[var(--app-accent)]"
+                          : "border-[var(--app-border)] bg-[var(--app-surface-soft)] text-[var(--app-muted)] hover:text-[var(--app-text)]"
+                      )}
+                    >
+                      <LockKeyhole size={17} className="mt-0.5 shrink-0" />
+                      <span>
+                        <span className="block text-sm font-semibold">
+                          {item.label}
                         </span>
-                      </button>
-                    ))}
-                  </div>
-                  <FieldError message={state.errors?.privacy?.[0]} />
+                        <span className="mt-1 block text-xs leading-5 opacity-75">
+                          {item.description}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
                 </div>
-              )}
+
+                {vaultNeedsUnlock && (
+                  <div className="mt-4">
+                    <VaultAccessPanel
+                      hasPasscode={Boolean(vaultAccess?.hasPasscode)}
+                    />
+                  </div>
+                )}
+
+                <FieldError message={state.errors?.privacy?.[0]} />
+              </div>
             </div>
 
-            {!isVault && (
+            {privacy !== "vault" && (
               <div className="grid gap-5 lg:grid-cols-2">
                 <TextField
                   icon={<MapPin size={16} />}
@@ -449,16 +440,10 @@ export function EditMemoryScreen({ memory, mode }: EditMemoryScreenProps) {
 
                 <Button
                   type="submit"
-                  disabled={pending || uploading}
+                  disabled={pending || uploading || vaultNeedsUnlock}
                   className="h-12 rounded-2xl bg-[var(--app-accent)] text-[15px] font-semibold text-white shadow-[0_16px_38px_rgba(99,102,241,0.24)] hover:bg-[var(--app-accent-hover)] sm:flex-[1.4]"
                 >
-                  {pending
-                    ? isVault
-                      ? "Updating Vault..."
-                      : "Updating memory..."
-                    : isVault
-                      ? "Update Vault"
-                      : "Update Memory"}
+                  {pending ? "Updating memory..." : "Update Memory"}
                   {!pending && <ArrowRight size={17} />}
                 </Button>
               </div>
@@ -474,7 +459,11 @@ export function EditMemoryScreen({ memory, mode }: EditMemoryScreenProps) {
                   Preview
                 </h2>
                 <span className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
-                  {isVault ? "Vault" : privacyOptions.find((item) => item.value === privacy)?.label}
+                  {
+                    MEMORY_PRIVACY_OPTIONS.find(
+                      (item) => item.value === privacy
+                    )?.label
+                  }
                 </span>
               </div>
               <div className="rounded-[1.6rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-4">

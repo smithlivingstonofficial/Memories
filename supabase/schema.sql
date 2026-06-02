@@ -54,7 +54,7 @@ CREATE TABLE public.memories (
   title text,
   content text NOT NULL,
   mood text,
-  privacy text NOT NULL DEFAULT 'private'::text CHECK (privacy = ANY (ARRAY['private'::text, 'inner_circle'::text, 'friends'::text, 'public'::text, 'vault'::text])),
+  privacy text NOT NULL DEFAULT 'private'::text CHECK (privacy = ANY (ARRAY['private'::text, 'followers'::text, 'inner_circle'::text, 'public'::text, 'vault'::text])),
   location_name text,
   tags ARRAY NOT NULL DEFAULT '{}'::text[],
   created_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -177,6 +177,25 @@ CREATE TABLE public.profiles (
   CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id),
   CONSTRAINT profiles_avatar_asset_id_fkey FOREIGN KEY (avatar_asset_id) REFERENCES public.media_assets(id),
   CONSTRAINT profiles_cover_asset_id_fkey FOREIGN KEY (cover_asset_id) REFERENCES public.media_assets(id)
+);
+CREATE TABLE public.vault_passcodes (
+  user_id uuid NOT NULL,
+  pin_salt text NOT NULL CHECK (length(pin_salt) >= 16),
+  pin_hash text NOT NULL CHECK (length(pin_hash) >= 32),
+  hash_iterations integer NOT NULL DEFAULT 120000 CHECK (hash_iterations >= 100000),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT vault_passcodes_pkey PRIMARY KEY (user_id),
+  CONSTRAINT vault_passcodes_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.vault_unlock_sessions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  token_hash text NOT NULL UNIQUE CHECK (length(token_hash) >= 32),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  expires_at timestamp with time zone NOT NULL,
+  CONSTRAINT vault_unlock_sessions_pkey PRIMARY KEY (id),
+  CONSTRAINT vault_unlock_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
 CREATE TABLE public.user_follows (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

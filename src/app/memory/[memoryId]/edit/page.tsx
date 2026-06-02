@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AppLayout } from "@/components/layout/app-layout";
 import { EditMemoryScreen } from "@/components/memory/edit-memory-screen";
 import { getEditableMemory } from "@/lib/memories/get-editable-memory";
+import { getVaultAccessState } from "@/lib/vault/access";
 
 type EditMemoryPageProps = {
   params: Promise<{
@@ -38,6 +39,7 @@ export default async function EditMemoryPage({ params }: EditMemoryPageProps) {
     viewerId: user.id,
     mode: "memory",
   });
+  const vaultAccess = await getVaultAccessState(supabase, user.id);
 
   return (
     <AppLayout
@@ -47,7 +49,7 @@ export default async function EditMemoryPage({ params }: EditMemoryPageProps) {
         avatarUrl: profile.avatar_url ?? null,
       }}
     >
-      <EditMemoryScreen memory={memory} mode="memory" />
+      <EditMemoryScreen memory={memory} mode="memory" vaultAccess={vaultAccess} />
     </AppLayout>
   );
 }

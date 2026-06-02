@@ -7,7 +7,7 @@ type SupabaseClient = Awaited<
   ReturnType<typeof import("@/lib/supabase/server").createClient>
 >;
 
-type MemoryPrivacy = "private" | "inner_circle" | "friends" | "public" | "vault";
+type MemoryPrivacy = "private" | "followers" | "inner_circle" | "public" | "vault";
 
 type MemoryRow = {
   id: string;

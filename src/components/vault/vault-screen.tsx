@@ -10,6 +10,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { DeleteMemoryButton } from "@/components/memory/delete-memory-button";
+import { lockVaultAction } from "@/app/actions/vault";
 import type { FeedMemory } from "@/types/memory";
 
 type VaultScreenProps = {
@@ -54,13 +55,25 @@ export function VaultScreen({ entries }: VaultScreenProps) {
             </p>
           </div>
 
-          <Link
-            href="/create/vault"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(99,102,241,0.25)] transition hover:bg-[var(--app-accent-hover)]"
-          >
-            Write in Vault
-            <PenLine size={17} />
-          </Link>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <form action={lockVaultAction}>
+              <button
+                type="submit"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-5 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
+              >
+                Lock Vault
+                <LockKeyhole size={17} />
+              </button>
+            </form>
+
+            <Link
+              href="/create/vault"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(99,102,241,0.25)] transition hover:bg-[var(--app-accent-hover)]"
+            >
+              Write in Vault
+              <PenLine size={17} />
+            </Link>
+          </div>
         </div>
 
         <div className="relative mt-6 grid gap-3 sm:grid-cols-3">

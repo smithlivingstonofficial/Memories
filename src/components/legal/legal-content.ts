@@ -73,7 +73,7 @@ export const legalPages: Record<LegalPageId, LegalPageContent> = {
       {
         heading: "Private by default",
         body: [
-          "Memories is designed so diary, memory, and Vault content is private by default unless you choose a different visibility setting. Public sharing, friends visibility, inner-circle visibility, and profile discoverability are user-controlled choices.",
+          "Memories is designed so diary, memory, and Vault content is private by default unless you choose a different visibility setting. Public sharing, followers visibility, inner-circle visibility, and profile discoverability are user-controlled choices.",
           "If you choose to make content public or visible to another audience, that content may be viewed by people in the selected audience and may be copied or reshared outside Memories by those viewers.",
         ],
       },
@@ -154,7 +154,7 @@ export const legalPages: Record<LegalPageId, LegalPageContent> = {
         heading: "Your content and privacy choices",
         body: [
           "You are responsible for the diary entries, memories, media, moments, messages, and other content you create or share. Memories provides privacy controls, but you decide what to save and what to share.",
-          "By making content public or visible to friends or your inner circle, you allow Memories to display that content to the selected audience.",
+          "By making content public or visible to followers or your inner circle, you allow Memories to display that content to the selected audience.",
         ],
       },
       {
@@ -317,4 +317,3 @@ export const legalPages: Record<LegalPageId, LegalPageContent> = {
     ],
   },
 };
-
