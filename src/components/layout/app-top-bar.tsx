@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { UserAvatar } from "@/components/layout/user-avatar";
 import type { AppUser } from "@/components/layout/layout-types";
 
@@ -18,10 +18,9 @@ export function AppTopBar({ user }: AppTopBarProps) {
         <Link
           href="/home"
           className="flex min-w-0 items-center gap-3 rounded-2xl pr-2 transition active:scale-[0.99]"
+          aria-label="Go to home"
         >
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-[1.2rem] bg-[var(--app-accent)] text-white shadow-[0_14px_28px_rgba(99,102,241,0.24)]">
-            <Sparkles size={22} />
-          </div>
+          <BrandLogo className="size-11 rounded-[1.2rem]" priority />
 
           <h1 className="font-brand truncate text-2xl font-semibold leading-none tracking-[-0.06em] text-[var(--app-text)]">
             Memories

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { desktopNavGroups } from "@/components/layout/navigation-config";
 import { SidebarGroup } from "@/components/layout/sidebar-nav-group";
 import { UserAvatar } from "@/components/layout/user-avatar";
@@ -40,10 +41,9 @@ export function DesktopSidebar({
             "flex items-center",
             collapsed ? "justify-center" : "gap-3"
           )}
+          aria-label="Go to home"
         >
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-[1.25rem] bg-[var(--app-accent)] text-white shadow-[0_18px_40px_rgba(99,102,241,0.25)]">
-            <Sparkles size={22} />
-          </div>
+          <BrandLogo priority />
 
           {!collapsed && (
             <div>

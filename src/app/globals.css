@@ -385,6 +385,18 @@ button:disabled {
   background: var(--app-accent-hover);
 }
 
+.theme-logo-dark {
+  display: none;
+}
+
+html[data-theme="dark"] .theme-logo-light {
+  display: none;
+}
+
+html[data-theme="dark"] .theme-logo-dark {
+  display: block;
+}
+
 /* -------------------------------------------------------------------------- */
 /* OLD UTILITY SUPPORT                                                        */
 /* -------------------------------------------------------------------------- */

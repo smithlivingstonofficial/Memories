@@ -8,6 +8,7 @@ import {
   MoreHorizontal,
   PenLine,
   Plus,
+  LockKeyhole,
 } from "lucide-react";
 import { HomeMomentsRealtimeRefresh } from "@/components/home/home-moments-realtime-refresh";
 import { DeleteMemoryButton } from "@/components/memory/delete-memory-button";
@@ -218,7 +219,7 @@ function DesktopSideArea() {
       >
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
-            <PenLine size={18} />
+            <LockKeyhole size={18} />
           </div>
           <span className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
             Vault
@@ -476,10 +477,10 @@ function MemoryCard({
 
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-[var(--app-text)] transition hover:text-[var(--app-accent)]">
-                {memory.author.fullName}
+                {memory.author.fullName} {" • "} {formatDate(memory.createdAt)}
               </p>
               <p className="truncate text-xs text-[var(--app-muted)]">
-                @{memory.author.username} {" / "} {formatDate(memory.createdAt)}
+                @{memory.author.username} 
               </p>
             </div>
           </Link>
