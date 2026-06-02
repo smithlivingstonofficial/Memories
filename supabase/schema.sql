@@ -204,6 +204,18 @@ CREATE TABLE public.profiles (
   CONSTRAINT profiles_avatar_asset_id_fkey FOREIGN KEY (avatar_asset_id) REFERENCES public.media_assets(id),
   CONSTRAINT profiles_cover_asset_id_fkey FOREIGN KEY (cover_asset_id) REFERENCES public.media_assets(id)
 );
+CREATE TABLE public.security_verifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  email text NOT NULL,
+  purpose text NOT NULL CHECK (purpose = ANY (ARRAY['account_password'::text])),
+  token_hash text NOT NULL UNIQUE CHECK (length(token_hash) >= 32),
+  expires_at timestamp with time zone NOT NULL,
+  consumed_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT security_verifications_pkey PRIMARY KEY (id),
+  CONSTRAINT security_verifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
 CREATE TABLE public.vault_passcodes (
   user_id uuid NOT NULL,
   pin_salt text NOT NULL CHECK (length(pin_salt) >= 16),

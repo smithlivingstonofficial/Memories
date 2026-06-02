@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   Bell,
   ChevronRight,
+  KeyRound,
   LockKeyhole,
   Monitor,
   Moon,
@@ -107,6 +108,12 @@ export function SettingsScreen({ profile }: SettingsScreenProps) {
             icon={ShieldCheck}
             title="Follow requests"
             value="Requests"
+          />
+          <SettingsLink
+            href="/settings/security"
+            icon={KeyRound}
+            title="Security"
+            value="Passwords"
           />
           <SettingsLink
             href="/vault"
