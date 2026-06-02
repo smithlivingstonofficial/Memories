@@ -35,6 +35,14 @@ export type CreateVaultEntryState = {
     title?: string[];
     content?: string[];
     moods?: string[];
+    locationName?: string[];
+    latitude?: string[];
+    longitude?: string[];
+    locationLabel?: string[];
+    locationSource?: string[];
+    locationConfidence?: string[];
+    locationAccuracyMeters?: string[];
+    tags?: string[];
     mediaAssetIds?: string[];
   };
 };
@@ -184,6 +192,34 @@ const CreateVaultEntrySchema = z.object({
     .max(8000, "Vault entry is too long."),
 
   moods: MoodsSchema,
+
+  locationName: optionalText(120),
+  locationLabel: optionalText(160),
+  latitude: optionalNumber.refine(
+    (value) => value === null || (value >= -90 && value <= 90),
+    "Invalid latitude."
+  ),
+  longitude: optionalNumber.refine(
+    (value) => value === null || (value >= -180 && value <= 180),
+    "Invalid longitude."
+  ),
+  locationSource: z.preprocess((value) => {
+    if (typeof value !== "string" || value.trim().length === 0) {
+      return "unknown";
+    }
+
+    return value;
+  }, LocationSourceSchema),
+  locationConfidence: optionalNumber.refine(
+    (value) => value === null || (value >= 0 && value <= 1),
+    "Invalid location confidence."
+  ),
+  locationAccuracyMeters: optionalNumber.refine(
+    (value) => value === null || value >= 0,
+    "Invalid location accuracy."
+  ),
+
+  tags: TagsSchema,
 
   mediaAssetIds: MediaAssetIdsSchema,
 });
@@ -432,6 +468,14 @@ export async function createVaultEntryAction(
     title: formData.get("title"),
     content: formData.get("content"),
     moods: formData.get("moods"),
+    locationName: formData.get("locationName"),
+    locationLabel: formData.get("locationLabel"),
+    latitude: formData.get("latitude"),
+    longitude: formData.get("longitude"),
+    locationSource: formData.get("locationSource"),
+    locationConfidence: formData.get("locationConfidence"),
+    locationAccuracyMeters: formData.get("locationAccuracyMeters"),
+    tags: formData.get("tags"),
     mediaAssetIds: formData.get("mediaAssetIds"),
   });
 
@@ -442,7 +486,20 @@ export async function createVaultEntryAction(
     };
   }
 
-  const { title, content, moods, mediaAssetIds } = validatedFields.data;
+  const {
+    title,
+    content,
+    moods,
+    locationName,
+    locationLabel,
+    latitude,
+    longitude,
+    locationSource,
+    locationConfidence,
+    locationAccuracyMeters,
+    tags,
+    mediaAssetIds,
+  } = validatedFields.data;
 
   const supabase = await createClient();
 
@@ -523,8 +580,15 @@ export async function createVaultEntryAction(
       mood: moods[0] ?? null,
       moods,
       privacy: "vault",
-      location_name: null,
-      tags: [],
+      location_name: locationLabel ?? locationName,
+      location_label: locationLabel ?? locationName,
+      latitude,
+      longitude,
+      location_source:
+        latitude !== null && longitude !== null ? locationSource : "unknown",
+      location_confidence: locationConfidence,
+      location_accuracy_meters: locationAccuracyMeters,
+      tags,
       entry_date: entryDate,
       entry_timezone: "Asia/Kolkata",
       media_count: mediaAssetIds.length,

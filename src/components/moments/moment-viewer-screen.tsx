@@ -11,6 +11,7 @@ import {
   Eye,
   Globe2,
   LockKeyhole,
+  Pencil,
   Sparkles,
   Users,
   X,
@@ -190,7 +191,19 @@ export function MomentViewerScreen({ data }: MomentViewerScreenProps) {
                 {group.currentIndex + 1}/{group.totalCount}
               </span>
 
-              {viewer.isOwner && <DeleteMomentButton momentId={moment.id} />}
+              {viewer.isOwner && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/moment/${moment.id}/edit`)}
+                    className="inline-flex size-10 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] text-[var(--app-muted)] transition hover:text-[var(--app-accent)]"
+                    aria-label="Edit Moment"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <DeleteMomentButton momentId={moment.id} />
+                </>
+              )}
 
               <button
                 type="button"

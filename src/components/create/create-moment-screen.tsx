@@ -21,6 +21,14 @@ import {
   X,
 } from "lucide-react";
 import { createMomentAction } from "@/app/actions/moments";
+import { LocationFields, type LocationSource } from "@/components/create/location-fields";
+import { MoodSelector } from "@/components/create/mood-selector";
+import {
+  createLocationSuggestion,
+  extractJpegGps,
+  prepareImageForUpload,
+} from "@/lib/media/client-media-processing";
+import { MEMORY_MOODS } from "@/lib/moods";
 
 type CreateMomentScreenProps = {
   user: {
@@ -38,6 +46,11 @@ type MediaMetadata = {
   width: number | null;
   height: number | null;
   durationSeconds: number | null;
+  originalSize: number;
+  optimizedSize: number;
+  optimizationStatus: "not_needed" | "optimized" | "skipped" | "failed";
+  latitude: number | null;
+  longitude: number | null;
 };
 
 type UploadUrlResponse = {
@@ -79,17 +92,6 @@ const visibilityOptions: {
   },
 ];
 
-const moods = [
-  "Peaceful",
-  "Happy",
-  "Grateful",
-  "Blessed",
-  "Loved",
-  "Calm",
-  "Hopeful",
-  "Excited",
-];
-
 export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
   const router = useRouter();
 
@@ -103,12 +105,29 @@ export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
     width: null,
     height: null,
     durationSeconds: null,
+    originalSize: 0,
+    optimizedSize: 0,
+    optimizationStatus: "not_needed",
+    latitude: null,
+    longitude: null,
   });
 
   const [caption, setCaption] = useState("");
-  const [selectedMood, setSelectedMood] = useState("Peaceful");
+  const [selectedMoods, setSelectedMoods] = useState<string[]>(["Peaceful"]);
   const [visibility, setVisibility] =
     useState<MomentVisibility>("followers");
+  const [locationName, setLocationName] = useState("");
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [locationSource, setLocationSource] =
+    useState<LocationSource>("unknown");
+  const [locationConfidence, setLocationConfidence] = useState<number | null>(
+    null
+  );
+  const [locationAccuracyMeters, setLocationAccuracyMeters] = useState<
+    number | null
+  >(null);
+  const [locationMessage, setLocationMessage] = useState("");
   const [message, setMessage] = useState("");
 
   const [isPending, startTransition] = useTransition();
@@ -138,7 +157,7 @@ export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
 
     const maxSize = 120 * 1024 * 1024;
 
-    if (file.size > maxSize) {
+    if (isVideo && file.size > maxSize) {
       setMessage("Moment media should be less than 120 MB.");
       return;
     }
@@ -147,27 +166,64 @@ export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
       URL.revokeObjectURL(previewUrl);
     }
 
-    const nextPreviewUrl = URL.createObjectURL(file);
+    const gps = await extractJpegGps(file);
+    const prepared = isImage
+      ? await prepareImageForUpload(file)
+      : {
+          file,
+          originalSize: file.size,
+          optimizedSize: file.size,
+          status: "skipped" as const,
+        };
+
+    if (prepared.file.size > maxSize) {
+      setMessage("Moment media should be less than 120 MB.");
+      return;
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(prepared.file);
     const nextMediaKind = isImage ? "image" : "video";
 
-    setSelectedFile(file);
+    setSelectedFile(prepared.file);
     setMediaKind(nextMediaKind);
     setPreviewUrl(nextPreviewUrl);
     setMediaMetadata({
       width: null,
       height: null,
       durationSeconds: null,
+      originalSize: prepared.originalSize,
+      optimizedSize: prepared.optimizedSize,
+      optimizationStatus: prepared.status,
+      latitude: gps?.latitude ?? null,
+      longitude: gps?.longitude ?? null,
     });
+
+    if (gps && !latitude && !longitude) {
+      const suggestion = createLocationSuggestion([gps]);
+      if (suggestion) {
+        setLatitude(suggestion.latitude);
+        setLongitude(suggestion.longitude);
+        setLocationName(suggestion.label);
+        setLocationSource(suggestion.source);
+        setLocationConfidence(suggestion.confidence);
+        setLocationAccuracyMeters(null);
+        setLocationMessage("Location suggested from uploaded media metadata.");
+      }
+    }
 
     try {
       const metadata = await readMediaMetadata(nextPreviewUrl, nextMediaKind);
-      setMediaMetadata(metadata);
+      setMediaMetadata((current) => ({
+        ...current,
+        ...metadata,
+      }));
     } catch {
-      setMediaMetadata({
+      setMediaMetadata((current) => ({
+        ...current,
         width: null,
         height: null,
         durationSeconds: null,
-      });
+      }));
     }
   }
 
@@ -183,6 +239,11 @@ export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
       width: null,
       height: null,
       durationSeconds: null,
+      originalSize: 0,
+      optimizedSize: 0,
+      optimizationStatus: "not_needed",
+      latitude: null,
+      longitude: null,
     });
     setMessage("");
   }
@@ -251,9 +312,36 @@ export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
           "durationSeconds",
           String(mediaMetadata.durationSeconds ?? "")
         );
+        formData.append("mediaLatitude", String(mediaMetadata.latitude ?? ""));
+        formData.append("mediaLongitude", String(mediaMetadata.longitude ?? ""));
+        formData.append(
+          "originalSizeBytes",
+          String(mediaMetadata.originalSize || selectedFile.size)
+        );
+        formData.append(
+          "optimizedSizeBytes",
+          String(mediaMetadata.optimizedSize || selectedFile.size)
+        );
+        formData.append("optimizationStatus", mediaMetadata.optimizationStatus);
+        formData.append(
+          "usedForLocationSuggestion",
+          String(
+            mediaMetadata.latitude !== null && mediaMetadata.longitude !== null
+          )
+        );
         formData.append("caption", caption.trim());
-        formData.append("mood", selectedMood);
+        formData.append("mood", selectedMoods[0] ?? "");
         formData.append("visibility", visibility);
+        formData.append("locationName", locationName);
+        formData.append("locationLabel", locationName);
+        formData.append("latitude", String(latitude ?? ""));
+        formData.append("longitude", String(longitude ?? ""));
+        formData.append("locationSource", locationSource);
+        formData.append("locationConfidence", String(locationConfidence ?? ""));
+        formData.append(
+          "locationAccuracyMeters",
+          String(locationAccuracyMeters ?? "")
+        );
 
         const result = await createMomentAction(formData);
 
@@ -402,7 +490,7 @@ export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
 
                     <div className="mt-3 flex flex-wrap gap-2">
                       <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white backdrop-blur-xl">
-                        {selectedMood}
+                        {selectedMoods[0] ?? "Peaceful"}
                       </span>
                       <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white backdrop-blur-xl">
                         {getVisibilityLabel(visibility)}
@@ -490,27 +578,39 @@ export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
             </div>
 
             <div className="mt-5">
-              <p className="mb-3 text-sm font-medium text-[var(--app-text)]">
-                Mood
-              </p>
+              <MoodSelector
+                moods={MEMORY_MOODS}
+                selectedMoods={selectedMoods}
+                onChange={setSelectedMoods}
+                maxSelections={1}
+              />
+            </div>
 
-              <div className="flex flex-wrap gap-2">
-                {moods.map((mood) => (
-                  <button
-                    key={mood}
-                    type="button"
-                    onClick={() => setSelectedMood(mood)}
-                    disabled={isPending}
-                    className={
-                      selectedMood === mood
-                        ? "rounded-full bg-[var(--app-accent)] px-3 py-2 text-xs font-semibold text-white"
-                        : "rounded-full border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-3 py-2 text-xs font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
-                    }
-                  >
-                    {mood}
-                  </button>
-                ))}
-              </div>
+            <div className="mt-5">
+              <LocationFields
+                locationName={locationName}
+                latitude={latitude}
+                longitude={longitude}
+                locationSource={locationSource}
+                locationConfidence={locationConfidence}
+                locationAccuracyMeters={locationAccuracyMeters}
+                locationMessage={locationMessage}
+                onLocationNameChange={(value) => {
+                  setLocationName(value);
+                  if (!latitude || !longitude) {
+                    setLocationSource(value.trim() ? "manual" : "unknown");
+                  }
+                }}
+                onLocationChange={(location) => {
+                  setLocationName(location.locationName);
+                  setLatitude(location.latitude);
+                  setLongitude(location.longitude);
+                  setLocationSource(location.locationSource);
+                  setLocationConfidence(location.locationConfidence);
+                  setLocationAccuracyMeters(location.locationAccuracyMeters);
+                  setLocationMessage(location.locationMessage);
+                }}
+              />
             </div>
           </section>
 
@@ -650,7 +750,7 @@ function getVisibilityLabel(value: MomentVisibility) {
 function readMediaMetadata(
   previewUrl: string,
   mediaKind: MediaKind
-): Promise<MediaMetadata> {
+): Promise<Pick<MediaMetadata, "width" | "height" | "durationSeconds">> {
   return new Promise((resolve, reject) => {
     if (mediaKind === "image") {
       const image = new Image();

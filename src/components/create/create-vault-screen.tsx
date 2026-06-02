@@ -9,6 +9,7 @@ import {
   ImagePlus,
   Loader2,
   LockKeyhole,
+  Tags,
   ShieldCheck,
   Trash2,
   UploadCloud,
@@ -18,7 +19,17 @@ import {
   type CreateVaultEntryState,
 } from "@/app/actions/memories";
 import { uploadMedia } from "@/lib/media/upload-media";
+import {
+  createLocationSuggestion,
+  extractJpegGps,
+  prepareImageForUpload,
+  type MediaGpsLocation,
+} from "@/lib/media/client-media-processing";
 import { Button } from "@/components/ui/button";
+import {
+  LocationFields,
+  type LocationSource,
+} from "@/components/create/location-fields";
 import { MoodSelector } from "@/components/create/mood-selector";
 import { VAULT_MOODS } from "@/lib/moods";
 
@@ -34,6 +45,11 @@ type UploadedAsset = {
   fileName: string;
   mimeType: string;
   previewUrl: string;
+  latitude: number | null;
+  longitude: number | null;
+  originalSize: number;
+  optimizedSize: number;
+  optimizationStatus: "not_needed" | "optimized" | "skipped" | "failed";
 };
 
 export function CreateVaultScreen() {
@@ -47,6 +63,19 @@ export function CreateVaultScreen() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [selectedMoods, setSelectedMoods] = useState<string[]>(["Thoughtful"]);
+  const [locationName, setLocationName] = useState("");
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [locationSource, setLocationSource] =
+    useState<LocationSource>("unknown");
+  const [locationConfidence, setLocationConfidence] = useState<number | null>(
+    null
+  );
+  const [locationAccuracyMeters, setLocationAccuracyMeters] = useState<
+    number | null
+  >(null);
+  const [locationMessage, setLocationMessage] = useState("");
+  const [tags, setTags] = useState("");
   const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
@@ -68,26 +97,61 @@ export function CreateVaultScreen() {
       const selectedFiles = Array.from(files).slice(0, remainingSlots);
 
       const uploaded: UploadedAsset[] = [];
+      const gpsLocations: MediaGpsLocation[] = [];
 
       for (const file of selectedFiles) {
+        const gps = await extractJpegGps(file);
+        if (gps) gpsLocations.push(gps);
+
+        const prepared = file.type.startsWith("image/")
+          ? await prepareImageForUpload(file)
+          : {
+              file,
+              originalSize: file.size,
+              optimizedSize: file.size,
+              status: "skipped" as const,
+            };
+
         const result = await uploadMedia({
-          file,
+          file: prepared.file,
           purpose: "vault",
           visibility: "private",
+          originalFileSize: prepared.originalSize,
+          optimizedFileSize: prepared.optimizedSize,
+          latitude: gps?.latitude ?? null,
+          longitude: gps?.longitude ?? null,
+          optimizationStatus: prepared.status,
+          usedForLocationSuggestion: Boolean(gps),
         });
 
         uploaded.push({
           assetId: result.assetId,
           objectKey: result.objectKey,
           publicUrl: result.publicUrl,
-          fileName: file.name,
-          mimeType: file.type,
-          previewUrl: URL.createObjectURL(file),
+          fileName: prepared.file.name,
+          mimeType: prepared.file.type,
+          previewUrl: URL.createObjectURL(prepared.file),
+          latitude: gps?.latitude ?? null,
+          longitude: gps?.longitude ?? null,
+          originalSize: prepared.originalSize,
+          optimizedSize: prepared.optimizedSize,
+          optimizationStatus: prepared.status,
         });
       }
 
       setUploadedAssets((current) => [...current, ...uploaded]);
       setUploadMessage("Private media uploaded successfully.");
+
+      const suggestion = createLocationSuggestion(gpsLocations);
+      if (suggestion && !latitude && !longitude) {
+        setLatitude(suggestion.latitude);
+        setLongitude(suggestion.longitude);
+        setLocationName(suggestion.label);
+        setLocationSource(suggestion.source);
+        setLocationConfidence(suggestion.confidence);
+        setLocationAccuracyMeters(null);
+        setLocationMessage("Location suggested from uploaded media metadata.");
+      }
     } catch (error) {
       setUploadMessage(
         error instanceof Error ? error.message : "Vault media upload failed."
@@ -105,6 +169,14 @@ export function CreateVaultScreen() {
     setUploadedAssets((current) =>
       current.filter((asset) => asset.assetId !== assetId)
     );
+  }
+
+  function handleLocationNameChange(value: string) {
+    setLocationName(value);
+
+    if (!latitude || !longitude) {
+      setLocationSource(value.trim() ? "manual" : "unknown");
+    }
   }
 
   return (
@@ -219,6 +291,43 @@ export function CreateVaultScreen() {
               <FieldError message={state.errors?.moods?.[0]} />
             </div>
 
+            <div className="grid gap-5 lg:grid-cols-2">
+              <LocationFields
+                locationName={locationName}
+                latitude={latitude}
+                longitude={longitude}
+                locationSource={locationSource}
+                locationConfidence={locationConfidence}
+                locationAccuracyMeters={locationAccuracyMeters}
+                locationMessage={locationMessage}
+                onLocationNameChange={handleLocationNameChange}
+                onLocationChange={(location) => {
+                  setLocationName(location.locationName);
+                  setLatitude(location.latitude);
+                  setLongitude(location.longitude);
+                  setLocationSource(location.locationSource);
+                  setLocationConfidence(location.locationConfidence);
+                  setLocationAccuracyMeters(location.locationAccuracyMeters);
+                  setLocationMessage(location.locationMessage);
+                }}
+              />
+
+              <div className="mem-card-strong rounded-[1.7rem] p-4">
+                <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--app-text)]">
+                  <Tags size={16} />
+                  Tags
+                </label>
+
+                <input
+                  name="tags"
+                  value={tags}
+                  onChange={(event) => setTags(event.target.value)}
+                  placeholder="private, healing, dream"
+                  className="mem-input h-12 w-full rounded-2xl px-4 text-[15px] outline-none transition-all placeholder:text-[var(--app-faint)] focus:border-[var(--app-accent)]"
+                />
+              </div>
+            </div>
+
             <div className="mem-card-strong rounded-[1.7rem] p-4">
               <div className="mb-4 flex items-center justify-between gap-4">
                 <div>
@@ -271,6 +380,10 @@ export function CreateVaultScreen() {
                   {uploadMessage}
                 </p>
               )}
+
+              <p className="mt-3 text-xs leading-5 text-[var(--app-muted)]">
+                Large images are optimized before upload. Videos keep their original file and must stay under the upload limit.
+              </p>
 
               {uploadedAssets.length > 0 && (
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -341,6 +454,7 @@ export function CreateVaultScreen() {
               title={title}
               content={content}
               moods={selectedMoods}
+              locationName={locationName}
               media={uploadedAssets[0]}
             />
 
@@ -389,11 +503,13 @@ function VaultPreview({
   title,
   content,
   moods,
+  locationName,
   media,
 }: {
   title: string;
   content: string;
   moods: string[];
+  locationName: string;
   media?: UploadedAsset;
 }) {
   return (
@@ -453,6 +569,12 @@ function VaultPreview({
         <p className="mt-2 line-clamp-6 text-sm leading-6 text-[var(--app-muted)]">
           {content || "Your private writing preview will appear here..."}
         </p>
+
+        {locationName && (
+          <p className="mt-4 flex items-center gap-2 text-xs text-[var(--app-muted)]">
+            {locationName}
+          </p>
+        )}
       </div>
     </div>
   );

@@ -10,6 +10,13 @@ create table public.moment_media (
   width integer null,
   height integer null,
   duration_seconds numeric null,
+  latitude double precision null,
+  longitude double precision null,
+  location_source text not null default 'unknown'::text,
+  original_size_bytes bigint null,
+  optimized_size_bytes bigint null,
+  optimization_status text not null default 'not_needed'::text,
+  used_for_location_suggestion boolean not null default false,
   display_order integer not null default 0,
   upload_status text not null default 'uploaded'::text,
   created_at timestamp with time zone not null default now(),
@@ -19,6 +26,23 @@ create table public.moment_media (
   constraint moment_media_media_kind_check check (
     (
       media_kind = any (array['image'::text, 'video'::text])
+    )
+  ),
+  constraint moment_media_location_source_check check (
+    (
+      location_source = any (array['media_gps'::text, 'unknown'::text])
+    )
+  ),
+  constraint moment_media_optimization_status_check check (
+    (
+      optimization_status = any (
+        array[
+          'not_needed'::text,
+          'optimized'::text,
+          'skipped'::text,
+          'failed'::text
+        ]
+      )
     )
   ),
   constraint moment_media_upload_status_check check (
@@ -42,3 +66,7 @@ create index IF not exists moment_media_owner_idx on public.moment_media using b
 create index IF not exists moment_media_object_key_idx on public.moment_media using btree (object_key) TABLESPACE pg_default;
 
 create index IF not exists moment_media_cleanup_idx on public.moment_media using btree (moment_id, upload_status) TABLESPACE pg_default;
+
+create index IF not exists moment_media_location_idx on public.moment_media using btree (owner_id, latitude, longitude) TABLESPACE pg_default
+where
+  ((latitude is not null) and (longitude is not null));

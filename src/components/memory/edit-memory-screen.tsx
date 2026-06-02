@@ -11,7 +11,6 @@ import {
   ImagePlus,
   Loader2,
   LockKeyhole,
-  MapPin,
   Tags,
   Trash2,
   UploadCloud,
@@ -26,10 +25,13 @@ import { uploadMedia } from "@/lib/media/upload-media";
 import {
   createLocationSuggestion,
   extractJpegGps,
-  formatCoordinateLabel,
   prepareImageForUpload,
   type MediaGpsLocation,
 } from "@/lib/media/client-media-processing";
+import {
+  LocationFields,
+  type LocationSource,
+} from "@/components/create/location-fields";
 import { MEMORY_MOODS, VAULT_MOODS } from "@/lib/moods";
 import { MEMORY_PRIVACY_OPTIONS } from "@/lib/memories/privacy";
 import type {
@@ -91,9 +93,8 @@ export function EditMemoryScreen({
   const [locationName, setLocationName] = useState(memory.locationName);
   const [latitude, setLatitude] = useState<number | null>(memory.latitude);
   const [longitude, setLongitude] = useState<number | null>(memory.longitude);
-  const [locationSource, setLocationSource] = useState<
-    "manual" | "browser_gps" | "media_gps" | "mixed_media" | "unknown"
-  >(memory.locationSource);
+  const [locationSource, setLocationSource] =
+    useState<LocationSource>(memory.locationSource);
   const [locationConfidence, setLocationConfidence] = useState<number | null>(
     memory.locationConfidence
   );
@@ -214,38 +215,6 @@ export function EditMemoryScreen({
     );
   }
 
-  function useCurrentLocation() {
-    setLocationMessage("");
-
-    if (!navigator.geolocation) {
-      setLocationMessage("GPS location is not available in this browser.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const nextLatitude = position.coords.latitude;
-        const nextLongitude = position.coords.longitude;
-
-        setLatitude(nextLatitude);
-        setLongitude(nextLongitude);
-        setLocationName(formatCoordinateLabel(nextLatitude, nextLongitude));
-        setLocationSource("browser_gps");
-        setLocationConfidence(1);
-        setLocationAccuracyMeters(position.coords.accuracy);
-        setLocationMessage("Current location added.");
-      },
-      () => {
-        setLocationMessage("Location permission was denied. You can enter it manually.");
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000,
-      }
-    );
-  }
-
   function handleLocationNameChange(value: string) {
     setLocationName(value);
 
@@ -314,20 +283,6 @@ export function EditMemoryScreen({
               value={JSON.stringify(
                 uploadedAssets.map((asset) => asset.assetId)
               )}
-            />
-            <input type="hidden" name="locationLabel" value={locationName} />
-            <input type="hidden" name="latitude" value={latitude ?? ""} />
-            <input type="hidden" name="longitude" value={longitude ?? ""} />
-            <input type="hidden" name="locationSource" value={locationSource} />
-            <input
-              type="hidden"
-              name="locationConfidence"
-              value={locationConfidence ?? ""}
-            />
-            <input
-              type="hidden"
-              name="locationAccuracyMeters"
-              value={locationAccuracyMeters ?? ""}
             />
 
             <div className="mem-card-strong rounded-[1.7rem] p-4 sm:p-5">
@@ -447,40 +402,25 @@ export function EditMemoryScreen({
             </div>
 
             <div className="grid gap-5 lg:grid-cols-2">
-              <div className="mem-card-strong rounded-[1.7rem] p-4">
-                <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--app-text)]">
-                  <MapPin size={16} />
-                  Location
-                </label>
-
-                <input
-                  name="locationName"
-                  value={locationName}
-                  onChange={(event) =>
-                    handleLocationNameChange(event.target.value)
-                  }
-                  placeholder="Coimbatore, Tamil Nadu"
-                  className="mem-input h-12 w-full rounded-2xl px-4 text-[15px] outline-none transition-all placeholder:text-[var(--app-faint)] focus:border-[var(--app-accent)]"
-                />
-
-                <button
-                  type="button"
-                  onClick={useCurrentLocation}
-                  className="mt-3 inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 text-xs font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-accent)]"
-                >
-                  Use current location
-                </button>
-                {locationMessage && (
-                  <p className="mt-2 text-xs leading-5 text-[var(--app-muted)]">
-                    {locationMessage}
-                  </p>
-                )}
-                {latitude !== null && longitude !== null && (
-                  <p className="mt-2 text-xs leading-5 text-[var(--app-muted)]">
-                    Coordinates saved for future map view.
-                  </p>
-                )}
-              </div>
+              <LocationFields
+                locationName={locationName}
+                latitude={latitude}
+                longitude={longitude}
+                locationSource={locationSource}
+                locationConfidence={locationConfidence}
+                locationAccuracyMeters={locationAccuracyMeters}
+                locationMessage={locationMessage}
+                onLocationNameChange={handleLocationNameChange}
+                onLocationChange={(location) => {
+                  setLocationName(location.locationName);
+                  setLatitude(location.latitude);
+                  setLongitude(location.longitude);
+                  setLocationSource(location.locationSource);
+                  setLocationConfidence(location.locationConfidence);
+                  setLocationAccuracyMeters(location.locationAccuracyMeters);
+                  setLocationMessage(location.locationMessage);
+                }}
+              />
 
               <TextField
                 icon={<Tags size={16} />}

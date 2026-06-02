@@ -4,6 +4,12 @@ create table public.moments (
   caption text null,
   mood text null,
   location_name text null,
+  latitude double precision null,
+  longitude double precision null,
+  location_label text null,
+  location_source text not null default 'unknown'::text,
+  location_confidence double precision null,
+  location_accuracy_meters double precision null,
   visibility text not null default 'followers'::text,
   expires_at timestamp with time zone not null default (now() + '24:00:00'::interval),
   is_archived boolean not null default false,
@@ -31,6 +37,34 @@ create table public.moments (
       )
     )
   ),
+  constraint moments_location_confidence_check check (
+    (
+      (location_confidence is null)
+      or (
+        (location_confidence >= (0)::double precision)
+        and (location_confidence <= (1)::double precision)
+      )
+    )
+  ),
+  constraint moments_location_accuracy_meters_check check (
+    (
+      (location_accuracy_meters is null)
+      or (location_accuracy_meters >= (0)::double precision)
+    )
+  ),
+  constraint moments_location_source_check check (
+    (
+      location_source = any (
+        array[
+          'manual'::text,
+          'browser_gps'::text,
+          'media_gps'::text,
+          'mixed_media'::text,
+          'unknown'::text
+        ]
+      )
+    )
+  ),
   constraint moments_visibility_check check (
     (
       visibility = any (
@@ -50,6 +84,10 @@ create index IF not exists moments_owner_idx on public.moments using btree (owne
 create index IF not exists moments_expires_idx on public.moments using btree (expires_at) TABLESPACE pg_default;
 
 create index IF not exists moments_visibility_idx on public.moments using btree (visibility) TABLESPACE pg_default;
+
+create index IF not exists moments_location_idx on public.moments using btree (owner_id, latitude, longitude) TABLESPACE pg_default
+where
+  ((latitude is not null) and (longitude is not null));
 
 create index IF not exists moments_active_feed_idx on public.moments using btree (owner_id, expires_at, visibility) TABLESPACE pg_default
 where

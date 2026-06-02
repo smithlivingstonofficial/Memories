@@ -12,12 +12,14 @@ type MoodSelectorProps = {
   moods: string[];
   selectedMoods: string[];
   onChange: (moods: string[]) => void;
+  maxSelections?: number;
 };
 
 export function MoodSelector({
   moods,
   selectedMoods,
   onChange,
+  maxSelections = MAX_MOOD_SELECTION,
 }: MoodSelectorProps) {
   const categories = useMemo(() => {
     const source =
@@ -48,7 +50,10 @@ export function MoodSelector({
       return;
     }
 
-    if (selectedMoods.length >= MAX_MOOD_SELECTION) return;
+    if (selectedMoods.length >= maxSelections) {
+      onChange(maxSelections === 1 ? [mood] : selectedMoods);
+      return;
+    }
 
     onChange([...selectedMoods, mood]);
   }
@@ -61,7 +66,7 @@ export function MoodSelector({
         </label>
 
         <span className="text-xs font-medium text-[var(--app-muted)]">
-          {selectedMoods.length}/{MAX_MOOD_SELECTION}
+          {selectedMoods.length}/{maxSelections}
         </span>
       </div>
 
@@ -121,7 +126,7 @@ export function MoodSelector({
       )}
 
       <p className="mt-3 text-xs leading-5 text-[var(--app-muted)]">
-        Choose a major feeling, then select up to {MAX_MOOD_SELECTION} sub-feelings.
+        Choose a major feeling, then select up to {maxSelections} sub-feeling{maxSelections === 1 ? "" : "s"}.
       </p>
     </div>
   );
