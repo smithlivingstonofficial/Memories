@@ -32,6 +32,15 @@ export type CreateVaultEntryState = {
   };
 };
 
+export type EditMemoryState = {
+  message?: string;
+  errors?: CreateMemoryState["errors"] &
+    CreateVaultEntryState["errors"] & {
+      memoryId?: string[];
+      existingMediaAssetIds?: string[];
+    };
+};
+
 const MemoryPrivacySchema = z.enum([
   "private",
   "inner_circle",
@@ -131,6 +140,42 @@ const CreateVaultEntrySchema = z.object({
 
   mediaAssetIds: MediaAssetIdsSchema,
 });
+
+const ExistingMediaAssetIdsSchema = z.preprocess((value) => {
+  if (typeof value !== "string" || value.trim().length === 0) return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}, z.array(z.string().uuid()).max(10));
+
+const EditMemorySchema = CreateMemorySchema.extend({
+  memoryId: z.string().uuid(),
+  existingMediaAssetIds: ExistingMediaAssetIdsSchema,
+}).refine(
+  (value) => value.existingMediaAssetIds.length + value.mediaAssetIds.length <= 10,
+  {
+    path: ["mediaAssetIds"],
+    message: "You can attach up to 10 media files only.",
+  }
+);
+
+const EditVaultEntrySchema = CreateVaultEntrySchema.extend({
+  memoryId: z.string().uuid(),
+  existingMediaAssetIds: ExistingMediaAssetIdsSchema,
+}).refine(
+  (value) => value.existingMediaAssetIds.length + value.mediaAssetIds.length <= 10,
+  {
+    path: ["mediaAssetIds"],
+    message: "You can attach up to 10 media files only.",
+  }
+);
+
+type EditMemoryInput = z.infer<typeof EditMemorySchema>;
+type EditVaultEntryInput = z.infer<typeof EditVaultEntrySchema>;
 
 function getAssetVisibility(
   privacy: z.infer<typeof MemoryPrivacySchema>
@@ -451,6 +496,254 @@ export async function createVaultEntryAction(
   revalidatePath(`/diary/day/${entryDate}`);
 
   redirect("/vault");
+}
+
+/* -------------------------------------------------------------------------- */
+/* EDIT MEMORY / VAULT ENTRY ACTION                                           */
+/* -------------------------------------------------------------------------- */
+
+export async function editMemoryAction(
+  _previousState: EditMemoryState,
+  formData: FormData
+): Promise<EditMemoryState> {
+  const mode = formData.get("mode") === "vault" ? "vault" : "memory";
+  const payload = {
+    memoryId: formData.get("memoryId"),
+    entryDate: formData.get("entryDate"),
+    entryTimezone: formData.get("entryTimezone"),
+    title: formData.get("title"),
+    content: formData.get("content"),
+    moods: formData.get("moods"),
+    privacy: formData.get("privacy"),
+    locationName: formData.get("locationName"),
+    tags: formData.get("tags"),
+    existingMediaAssetIds: formData.get("existingMediaAssetIds"),
+    mediaAssetIds: formData.get("mediaAssetIds"),
+  };
+
+  const validatedFields =
+    mode === "vault"
+      ? EditVaultEntrySchema.safeParse(payload)
+      : EditMemorySchema.safeParse(payload);
+
+  if (!validatedFields.success) {
+    return {
+      message: "Please check the highlighted fields.",
+      errors: validatedFields.error.flatten().fieldErrors,
+    };
+  }
+
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return {
+      message: "Your session expired. Please login again.",
+    };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("profile_completed, password_set")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!profile?.profile_completed || !profile?.password_set) {
+    redirect("/complete-profile");
+  }
+
+  const editData = validatedFields.data as EditMemoryInput | EditVaultEntryInput;
+
+  const { data: memory, error: memoryError } = await supabase
+    .from("memories")
+    .select("id, owner_id, privacy, entry_date")
+    .eq("id", editData.memoryId)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (memoryError) {
+    return { message: memoryError.message };
+  }
+
+  if (!memory || (mode === "vault") !== (memory.privacy === "vault")) {
+    return {
+      message:
+        mode === "vault"
+          ? "Vault entry not found or you do not have permission to edit it."
+          : "Memory not found or you do not have permission to edit it.",
+    };
+  }
+
+  const { data: currentLinks, error: currentLinksError } = await supabase
+    .from("memory_media")
+    .select("asset_id")
+    .eq("memory_id", editData.memoryId)
+    .eq("owner_id", user.id);
+
+  if (currentLinksError) {
+    return { message: currentLinksError.message };
+  }
+
+  const currentAssetIds = ((currentLinks ?? []) as { asset_id: string | null }[])
+    .map((item) => item.asset_id)
+    .filter((id): id is string => Boolean(id));
+  const currentAssetIdSet = new Set(currentAssetIds);
+  const keptExistingAssetIds = editData.existingMediaAssetIds.filter(
+    (assetId) => currentAssetIdSet.has(assetId)
+  );
+  const newAssetIds = editData.mediaAssetIds;
+  const nextAssetIds = [...keptExistingAssetIds, ...newAssetIds];
+
+  if (newAssetIds.length > 0) {
+    const { data: uploadedAssets, error: assetsError } = await supabase
+      .from("media_assets")
+      .select("id")
+      .eq("owner_id", user.id)
+      .eq("upload_status", "uploaded")
+      .in("id", newAssetIds);
+
+    if (assetsError) {
+      return {
+        message: assetsError.message || "Unable to verify uploaded media.",
+      };
+    }
+
+    if ((uploadedAssets?.length ?? 0) !== newAssetIds.length) {
+      return {
+        message: "Some uploaded media files are invalid or not completed.",
+      };
+    }
+  }
+
+  const visibility =
+    mode === "vault"
+      ? "private"
+      : getAssetVisibility((editData as EditMemoryInput).privacy);
+  const mediaPurpose = mode === "vault" ? "vault" : "memory";
+
+  if (nextAssetIds.length > 0) {
+    const { error: mediaUpdateError } = await supabase
+      .from("media_assets")
+      .update({
+        purpose: mediaPurpose,
+        visibility,
+      })
+      .eq("owner_id", user.id)
+      .in("id", nextAssetIds);
+
+    if (mediaUpdateError) {
+      return {
+        message: mediaUpdateError.message || "Unable to update media privacy.",
+      };
+    }
+  }
+
+  const updatePayload =
+    mode === "vault"
+      ? {
+          title: editData.title,
+          content: editData.content,
+          mood: editData.moods[0] ?? null,
+          moods: editData.moods,
+          media_count: nextAssetIds.length,
+        }
+      : {
+          title: editData.title,
+          content: editData.content,
+          mood: editData.moods[0] ?? null,
+          moods: editData.moods,
+          privacy: (editData as EditMemoryInput).privacy,
+          location_name: (editData as EditMemoryInput).locationName,
+          tags: (editData as EditMemoryInput).tags,
+          entry_date: (editData as EditMemoryInput).entryDate,
+          entry_timezone:
+            (editData as EditMemoryInput).entryTimezone || "Asia/Kolkata",
+          media_count: nextAssetIds.length,
+        };
+
+  const { error: updateError } = await supabase
+    .from("memories")
+    .update(updatePayload)
+    .eq("id", editData.memoryId)
+    .eq("owner_id", user.id);
+
+  if (updateError) {
+    return {
+      message: updateError.message || "Unable to update memory.",
+    };
+  }
+
+  const { error: deleteLinksError } = await supabase
+    .from("memory_media")
+    .delete()
+    .eq("memory_id", editData.memoryId)
+    .eq("owner_id", user.id);
+
+  if (deleteLinksError) {
+    return {
+      message: deleteLinksError.message || "Memory updated, but media sync failed.",
+    };
+  }
+
+  if (nextAssetIds.length > 0) {
+    const rows = nextAssetIds.map((assetId, index) => ({
+      memory_id: editData.memoryId,
+      asset_id: assetId,
+      owner_id: user.id,
+      sort_order: index,
+    }));
+
+    const { error: insertLinksError } = await supabase
+      .from("memory_media")
+      .insert(rows);
+
+    if (insertLinksError) {
+      return {
+        message:
+          insertLinksError.message || "Memory updated, but media sync failed.",
+      };
+    }
+  }
+
+  const removedAssetIds = currentAssetIds.filter(
+    (assetId) => !nextAssetIds.includes(assetId)
+  );
+
+  if (removedAssetIds.length > 0) {
+    await deleteMediaAssetsCompletely({
+      supabase,
+      userId: user.id,
+      assetIds: removedAssetIds,
+    });
+  }
+
+  revalidatePath("/home");
+  revalidatePath("/dashboard");
+  revalidatePath("/calendar");
+  revalidatePath("/timeline");
+  revalidatePath("/profile");
+  revalidatePath("/vault");
+  revalidatePath(`/memory/${editData.memoryId}`);
+  revalidatePath(`/memory/${editData.memoryId}/edit`);
+  revalidatePath(`/vault/${editData.memoryId}/edit`);
+
+  if (memory.entry_date) {
+    revalidatePath(`/diary/day/${memory.entry_date}`);
+  }
+
+  if (mode === "memory") {
+    revalidatePath(`/diary/day/${(editData as EditMemoryInput).entryDate}`);
+  }
+
+  redirect(
+    mode === "vault"
+      ? "/vault"
+      : `/memory/${editData.memoryId}`
+  );
 }
 
 /* -------------------------------------------------------------------------- */

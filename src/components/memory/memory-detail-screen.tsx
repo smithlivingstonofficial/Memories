@@ -6,6 +6,7 @@ import {
   LockKeyhole,
   MapPin,
   MessageCircle,
+  PenLine,
   Tag,
 } from "lucide-react";
 import { DeleteMemoryButton } from "@/components/memory/delete-memory-button";
@@ -37,11 +38,21 @@ export function MemoryDetailScreen({ data }: MemoryDetailScreenProps) {
           </Link>
 
           {viewer.isOwner && (
-            <DeleteMemoryButton
-              memoryId={memory.id}
-              type="memory"
-              variant="text"
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href={`/memory/${memory.id}/edit`}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-accent)]"
+              >
+                <PenLine size={15} />
+                Edit
+              </Link>
+
+              <DeleteMemoryButton
+                memoryId={memory.id}
+                type="memory"
+                variant="text"
+              />
+            </div>
           )}
         </div>
 

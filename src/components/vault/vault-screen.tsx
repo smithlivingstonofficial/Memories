@@ -167,13 +167,21 @@ function VaultEntryCard({ entry }: { entry: FeedMemory }) {
         </p>
 
         <div className="flex items-center gap-2">
+          <Link
+            href={`/vault/${entry.id}/edit`}
+            className="flex size-9 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] text-[var(--app-muted)] shadow-sm transition hover:text-[var(--app-accent)]"
+            aria-label="Edit Vault entry"
+          >
+            <PenLine size={16} />
+          </Link>
+
           <DeleteMemoryButton memoryId={entry.id} type="vault" />
 
           <Link
-            href={`/vault/${entry.id}`}
+            href={`/vault/${entry.id}/edit`}
             className="text-xs font-semibold text-[var(--app-accent)]"
           >
-            Open
+            Edit
           </Link>
         </div>
       </div>
