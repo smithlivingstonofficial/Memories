@@ -54,7 +54,7 @@ export const legalPages: Record<LegalPageId, LegalPageContent> = {
       {
         heading: "Who we are",
         body: [
-          "Memories is operated by [Legal Entity Name], located at [Business Address]. This policy explains how Memories handles information when you create an account, write diary entries, save memories, upload media, message other users, or use social features.",
+          "Memories is operated by ElLabs, located at Tamil Nadu, India. This policy explains how Memories handles information when you create an account, write diary entries, save memories, upload media, message other users, or use social features.",
           "This policy is a launch-ready draft and should be reviewed by a qualified legal professional before public release.",
         ],
       },
@@ -111,13 +111,13 @@ export const legalPages: Record<LegalPageId, LegalPageContent> = {
           "You can choose privacy settings for memories and moments.",
           "You can update profile visibility and searchability where the app provides those controls.",
           "You can delete memories, moments, reflections, media, and account-related content where available in the app.",
-          "You can contact [Privacy Email] for privacy requests, questions, or account data concerns.",
+          "You can contact smithlivingstonofficial@gmail.com for privacy requests, questions, or account data concerns.",
         ],
       },
       {
         heading: "Children and eligibility",
         body: [
-          "Memories is not intended for children under the minimum age required by applicable law. If you believe a child has provided information without proper consent, contact [Privacy Email].",
+          "Memories is not intended for children under the minimum age required by applicable law. If you believe a child has provided information without proper consent, contact smithlivingstonofficial@gmail.com.",
         ],
       },
       {
@@ -138,7 +138,7 @@ export const legalPages: Record<LegalPageId, LegalPageContent> = {
       {
         heading: "Agreement",
         body: [
-          "These Terms govern your use of Memories, operated by [Legal Entity Name]. By creating an account or using the service, you agree to these Terms and our Privacy Policy.",
+          "These Terms govern your use of Memories, operated by ElLabs. By creating an account or using the service, you agree to these Terms and our Privacy Policy.",
         ],
       },
       {
@@ -181,13 +181,13 @@ export const legalPages: Record<LegalPageId, LegalPageContent> = {
       {
         heading: "Disclaimers and limits",
         body: [
-          "Memories is provided as-is and as-available. To the maximum extent allowed by law, [Legal Entity Name] disclaims implied warranties and will not be liable for indirect, incidental, special, consequential, or punitive damages.",
+          "Memories is provided as-is and as-available. To the maximum extent allowed by law, ElLabs disclaims implied warranties and will not be liable for indirect, incidental, special, consequential, or punitive damages.",
         ],
       },
       {
         heading: "Contact",
         body: [
-          "Questions about these Terms can be sent to [Support Email].",
+          "Questions about these Terms can be sent to smithlivingstonofficial@gmail.com.",
         ],
       },
     ],
@@ -241,7 +241,7 @@ export const legalPages: Record<LegalPageId, LegalPageContent> = {
       {
         heading: "Limited license to operate Memories",
         body: [
-          "By uploading or creating content, you give [Legal Entity Name] a limited, worldwide, non-exclusive license to host, store, process, display, transmit, and back up that content only as needed to provide, secure, maintain, and improve Memories.",
+          "By uploading or creating content, you give ElLabs a limited, worldwide, non-exclusive license to host, store, process, display, transmit, and back up that content only as needed to provide, secure, maintain, and improve Memories.",
         ],
       },
       {
@@ -249,13 +249,13 @@ export const legalPages: Record<LegalPageId, LegalPageContent> = {
         bullets: [
           "Only upload content you own or have permission to use.",
           "Do not use Memories to infringe copyright, trademark, privacy, publicity, or other rights.",
-          "If you believe content on Memories infringes your rights, contact [Copyright Email] with enough detail for us to review the request.",
+          "If you believe content on Memories infringes your rights, contact smithlivingstonofficial@gmail.com with enough detail for us to review the request.",
         ],
       },
       {
         heading: "Takedown contact",
         body: [
-          "Copyright or intellectual property concerns can be sent to [Copyright Email]. Include your name, contact information, the content location, the rights you believe were infringed, and a statement that your report is accurate.",
+          "Copyright or intellectual property concerns can be sent to smithlivingstonofficial@gmail.com. Include your name, contact information, the content location, the rights you believe were infringed, and a statement that your report is accurate.",
         ],
       },
     ],
@@ -270,26 +270,26 @@ export const legalPages: Record<LegalPageId, LegalPageContent> = {
       {
         heading: "Operator",
         bullets: [
-          "Legal entity: [Legal Entity Name]",
-          "Business address: [Business Address]",
+          "Legal entity: ElLabs",
+          "Business address: Tamil Nadu, India",
         ],
       },
       {
         heading: "Support",
         body: [
-          "For account, login, bug, or product support, contact [Support Email].",
+          "For account, login, bug, or product support, contact smithlivingstonofficial@gmail.com.",
         ],
       },
       {
         heading: "Privacy",
         body: [
-          "For privacy questions, account data requests, or security concerns involving your personal information, contact [Privacy Email].",
+          "For privacy questions, account data requests, or security concerns involving your personal information, contact smithlivingstonofficial@gmail.com.",
         ],
       },
       {
         heading: "Copyright",
         body: [
-          "For copyright or intellectual property concerns, contact [Copyright Email].",
+          "For copyright or intellectual property concerns, contact smithlivingstonofficial@gmail.com.",
         ],
       },
       {
