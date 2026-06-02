@@ -23,6 +23,13 @@ import {
 import { MoodSelector } from "@/components/create/mood-selector";
 import { Button } from "@/components/ui/button";
 import { uploadMedia } from "@/lib/media/upload-media";
+import {
+  createLocationSuggestion,
+  extractJpegGps,
+  formatCoordinateLabel,
+  prepareImageForUpload,
+  type MediaGpsLocation,
+} from "@/lib/media/client-media-processing";
 import { MEMORY_MOODS, VAULT_MOODS } from "@/lib/moods";
 import { MEMORY_PRIVACY_OPTIONS } from "@/lib/memories/privacy";
 import type {
@@ -42,6 +49,11 @@ type UploadedAsset = {
   fileName: string;
   mimeType: string;
   previewUrl: string;
+  latitude: number | null;
+  longitude: number | null;
+  originalSize: number;
+  optimizedSize: number;
+  optimizationStatus: "not_needed" | "optimized" | "skipped" | "failed";
 };
 
 type EditMemoryScreenProps = {
@@ -77,6 +89,18 @@ export function EditMemoryScreen({
   const [privacy, setPrivacy] =
     useState<(typeof MEMORY_PRIVACY_OPTIONS)[number]["value"]>(memory.privacy);
   const [locationName, setLocationName] = useState(memory.locationName);
+  const [latitude, setLatitude] = useState<number | null>(memory.latitude);
+  const [longitude, setLongitude] = useState<number | null>(memory.longitude);
+  const [locationSource, setLocationSource] = useState<
+    "manual" | "browser_gps" | "media_gps" | "mixed_media" | "unknown"
+  >(memory.locationSource);
+  const [locationConfidence, setLocationConfidence] = useState<number | null>(
+    memory.locationConfidence
+  );
+  const [locationAccuracyMeters, setLocationAccuracyMeters] = useState<
+    number | null
+  >(memory.locationAccuracyMeters);
+  const [locationMessage, setLocationMessage] = useState("");
   const [tags, setTags] = useState(memory.tags.join(", "));
   const [existingMedia, setExistingMedia] = useState(memory.media);
   const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>([]);
@@ -104,10 +128,23 @@ export function EditMemoryScreen({
       const remainingSlots = Math.max(0, 10 - mediaCount);
       const selectedFiles = Array.from(files).slice(0, remainingSlots);
       const uploaded: UploadedAsset[] = [];
+      const gpsLocations: MediaGpsLocation[] = [];
 
       for (const file of selectedFiles) {
+        const gps = await extractJpegGps(file);
+        if (gps) gpsLocations.push(gps);
+
+        const prepared = file.type.startsWith("image/")
+          ? await prepareImageForUpload(file)
+          : {
+              file,
+              originalSize: file.size,
+              optimizedSize: file.size,
+              status: "skipped" as const,
+            };
+
         const result = await uploadMedia({
-          file,
+          file: prepared.file,
           purpose: privacy === "vault" ? "vault" : "memory",
           visibility: privacy === "vault"
             ? "private"
@@ -116,13 +153,24 @@ export function EditMemoryScreen({
               : privacy === "inner_circle"
                 ? "inner_circle"
                 : "private",
+          originalFileSize: prepared.originalSize,
+          optimizedFileSize: prepared.optimizedSize,
+          latitude: gps?.latitude ?? null,
+          longitude: gps?.longitude ?? null,
+          optimizationStatus: prepared.status,
+          usedForLocationSuggestion: Boolean(gps),
         });
 
         uploaded.push({
           assetId: result.assetId,
-          fileName: file.name,
-          mimeType: file.type,
-          previewUrl: URL.createObjectURL(file),
+          fileName: prepared.file.name,
+          mimeType: prepared.file.type,
+          previewUrl: URL.createObjectURL(prepared.file),
+          latitude: gps?.latitude ?? null,
+          longitude: gps?.longitude ?? null,
+          originalSize: prepared.originalSize,
+          optimizedSize: prepared.optimizedSize,
+          optimizationStatus: prepared.status,
         });
       }
 
@@ -130,6 +178,17 @@ export function EditMemoryScreen({
       setUploadMessage(
         isVault ? "Private media uploaded." : "Media uploaded successfully."
       );
+
+      const suggestion = createLocationSuggestion(gpsLocations);
+      if (suggestion && !latitude && !longitude) {
+        setLatitude(suggestion.latitude);
+        setLongitude(suggestion.longitude);
+        setLocationName(suggestion.label);
+        setLocationSource(suggestion.source);
+        setLocationConfidence(suggestion.confidence);
+        setLocationAccuracyMeters(null);
+        setLocationMessage("Location suggested from uploaded media metadata.");
+      }
     } catch (error) {
       setUploadMessage(
         error instanceof Error ? error.message : "Media upload failed."
@@ -153,6 +212,46 @@ export function EditMemoryScreen({
     setUploadedAssets((current) =>
       current.filter((asset) => asset.assetId !== assetId)
     );
+  }
+
+  function useCurrentLocation() {
+    setLocationMessage("");
+
+    if (!navigator.geolocation) {
+      setLocationMessage("GPS location is not available in this browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const nextLatitude = position.coords.latitude;
+        const nextLongitude = position.coords.longitude;
+
+        setLatitude(nextLatitude);
+        setLongitude(nextLongitude);
+        setLocationName(formatCoordinateLabel(nextLatitude, nextLongitude));
+        setLocationSource("browser_gps");
+        setLocationConfidence(1);
+        setLocationAccuracyMeters(position.coords.accuracy);
+        setLocationMessage("Current location added.");
+      },
+      () => {
+        setLocationMessage("Location permission was denied. You can enter it manually.");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      }
+    );
+  }
+
+  function handleLocationNameChange(value: string) {
+    setLocationName(value);
+
+    if (!latitude || !longitude) {
+      setLocationSource(value.trim() ? "manual" : "unknown");
+    }
   }
 
   return (
@@ -215,6 +314,20 @@ export function EditMemoryScreen({
               value={JSON.stringify(
                 uploadedAssets.map((asset) => asset.assetId)
               )}
+            />
+            <input type="hidden" name="locationLabel" value={locationName} />
+            <input type="hidden" name="latitude" value={latitude ?? ""} />
+            <input type="hidden" name="longitude" value={longitude ?? ""} />
+            <input type="hidden" name="locationSource" value={locationSource} />
+            <input
+              type="hidden"
+              name="locationConfidence"
+              value={locationConfidence ?? ""}
+            />
+            <input
+              type="hidden"
+              name="locationAccuracyMeters"
+              value={locationAccuracyMeters ?? ""}
             />
 
             <div className="mem-card-strong rounded-[1.7rem] p-4 sm:p-5">
@@ -333,26 +446,51 @@ export function EditMemoryScreen({
               </div>
             </div>
 
-            {privacy !== "vault" && (
-              <div className="grid gap-5 lg:grid-cols-2">
-                <TextField
-                  icon={<MapPin size={16} />}
-                  label="Location"
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div className="mem-card-strong rounded-[1.7rem] p-4">
+                <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--app-text)]">
+                  <MapPin size={16} />
+                  Location
+                </label>
+
+                <input
                   name="locationName"
                   value={locationName}
+                  onChange={(event) =>
+                    handleLocationNameChange(event.target.value)
+                  }
                   placeholder="Coimbatore, Tamil Nadu"
-                  onChange={setLocationName}
+                  className="mem-input h-12 w-full rounded-2xl px-4 text-[15px] outline-none transition-all placeholder:text-[var(--app-faint)] focus:border-[var(--app-accent)]"
                 />
-                <TextField
-                  icon={<Tags size={16} />}
-                  label="Tags"
-                  name="tags"
-                  value={tags}
-                  placeholder="sunset, peace, family"
-                  onChange={setTags}
-                />
+
+                <button
+                  type="button"
+                  onClick={useCurrentLocation}
+                  className="mt-3 inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 text-xs font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-accent)]"
+                >
+                  Use current location
+                </button>
+                {locationMessage && (
+                  <p className="mt-2 text-xs leading-5 text-[var(--app-muted)]">
+                    {locationMessage}
+                  </p>
+                )}
+                {latitude !== null && longitude !== null && (
+                  <p className="mt-2 text-xs leading-5 text-[var(--app-muted)]">
+                    Coordinates saved for future map view.
+                  </p>
+                )}
               </div>
-            )}
+
+              <TextField
+                icon={<Tags size={16} />}
+                label="Tags"
+                name="tags"
+                value={tags}
+                placeholder="sunset, peace, family"
+                onChange={setTags}
+              />
+            </div>
 
             <div className="mem-card-strong rounded-[1.7rem] p-4">
               <div className="mb-4 flex items-center justify-between gap-4">
@@ -400,6 +538,10 @@ export function EditMemoryScreen({
                   {uploadMessage}
                 </p>
               )}
+
+              <p className="mt-3 text-xs leading-5 text-[var(--app-muted)]">
+                Large images are optimized before upload. Videos keep their original file and must stay under the upload limit.
+              </p>
 
               {(existingMedia.length > 0 || uploadedAssets.length > 0) && (
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

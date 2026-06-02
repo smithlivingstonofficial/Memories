@@ -2,12 +2,24 @@ type UploadMediaOptions = {
   file: File;
   purpose: "profile_avatar" | "profile_cover" | "memory" | "moment" | "vault";
   visibility: "private" | "inner_circle" | "public";
+  originalFileSize?: number;
+  optimizedFileSize?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  optimizationStatus?: "not_needed" | "optimized" | "skipped" | "failed";
+  usedForLocationSuggestion?: boolean;
 };
 
 export async function uploadMedia({
   file,
   purpose,
   visibility,
+  originalFileSize,
+  optimizedFileSize,
+  latitude,
+  longitude,
+  optimizationStatus,
+  usedForLocationSuggestion,
 }: UploadMediaOptions) {
   const presignResponse = await fetch("/api/media/presign", {
     method: "POST",
@@ -18,8 +30,14 @@ export async function uploadMedia({
       fileName: file.name,
       fileType: file.type,
       fileSize: file.size,
+      originalFileSize: originalFileSize ?? file.size,
+      optimizedFileSize: optimizedFileSize ?? file.size,
       purpose,
       visibility,
+      latitude,
+      longitude,
+      optimizationStatus: optimizationStatus ?? "not_needed",
+      usedForLocationSuggestion: usedForLocationSuggestion ?? false,
     }),
   });
 

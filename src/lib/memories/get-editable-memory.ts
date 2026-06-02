@@ -18,6 +18,18 @@ type MemoryRow = {
   moods: string[] | null;
   privacy: MemoryPrivacy;
   location_name: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  location_label: string | null;
+  location_source:
+    | "manual"
+    | "browser_gps"
+    | "media_gps"
+    | "mixed_media"
+    | "unknown"
+    | null;
+  location_confidence: number | null;
+  location_accuracy_meters: number | null;
   tags: string[] | null;
   entry_date: string | null;
   entry_timezone: string | null;
@@ -54,6 +66,12 @@ export type EditableMemory = {
   moods: string[];
   privacy: MemoryPrivacy;
   locationName: string;
+  latitude: number | null;
+  longitude: number | null;
+  locationLabel: string;
+  locationSource: "manual" | "browser_gps" | "media_gps" | "mixed_media" | "unknown";
+  locationConfidence: number | null;
+  locationAccuracyMeters: number | null;
   tags: string[];
   entryDate: string;
   entryTimezone: string;
@@ -74,7 +92,7 @@ export async function getEditableMemory({
   const { data: memoryData, error: memoryError } = await supabase
     .from("memories")
     .select(
-      "id, owner_id, title, content, mood, moods, privacy, location_name, tags, entry_date, entry_timezone, created_at"
+      "id, owner_id, title, content, mood, moods, privacy, location_name, latitude, longitude, location_label, location_source, location_confidence, location_accuracy_meters, tags, entry_date, entry_timezone, created_at"
     )
     .eq("id", memoryId)
     .eq("owner_id", viewerId)
@@ -151,6 +169,12 @@ export async function getEditableMemory({
     moods,
     privacy: memory.privacy,
     locationName: memory.location_name ?? "",
+    latitude: memory.latitude,
+    longitude: memory.longitude,
+    locationLabel: memory.location_label ?? memory.location_name ?? "",
+    locationSource: memory.location_source ?? "unknown",
+    locationConfidence: memory.location_confidence,
+    locationAccuracyMeters: memory.location_accuracy_meters,
     tags: memory.tags ?? [],
     entryDate: memory.entry_date ?? formatDateInput(memory.created_at),
     entryTimezone: memory.entry_timezone ?? "Asia/Kolkata",

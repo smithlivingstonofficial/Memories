@@ -14,9 +14,28 @@ create table public.memories (
   entry_timezone text not null default 'Asia/Kolkata'::text,
   media_count integer not null default 0,
   is_favorite boolean not null default false,
+  latitude double precision null,
+  longitude double precision null,
+  location_label text null,
+  location_source text not null default 'unknown'::text,
+  location_confidence double precision null,
+  location_accuracy_meters double precision null,
   constraint memories_pkey primary key (id),
   constraint memories_owner_id_fkey foreign KEY (owner_id) references auth.users (id) on delete CASCADE,
   constraint memories_media_count_nonnegative check ((media_count >= 0)),
+  constraint memories_location_source_check check (
+    (
+      location_source = any (
+        array[
+          'manual'::text,
+          'browser_gps'::text,
+          'media_gps'::text,
+          'mixed_media'::text,
+          'unknown'::text
+        ]
+      )
+    )
+  ),
   constraint memories_privacy_check check (
     (
       privacy = any (

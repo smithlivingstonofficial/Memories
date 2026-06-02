@@ -1,6 +1,11 @@
 "use client";
 
-import { MAX_MOOD_SELECTION } from "@/lib/moods";
+import { useMemo, useState } from "react";
+import {
+  MAX_MOOD_SELECTION,
+  MEMORY_MOOD_CATEGORIES,
+  VAULT_MOOD_CATEGORIES,
+} from "@/lib/moods";
 import { cn } from "@/lib/utils";
 
 type MoodSelectorProps = {
@@ -14,6 +19,25 @@ export function MoodSelector({
   selectedMoods,
   onChange,
 }: MoodSelectorProps) {
+  const categories = useMemo(() => {
+    const source =
+      moods.length < 24 ? VAULT_MOOD_CATEGORIES : MEMORY_MOOD_CATEGORIES;
+    const allowed = new Set(moods);
+
+    return source
+      .map((group) => ({
+        category: group.category,
+        moods: group.moods.filter((mood) => allowed.has(mood)),
+      }))
+      .filter((group) => group.moods.length > 0);
+  }, [moods]);
+  const [activeCategory, setActiveCategory] = useState(
+    categories[0]?.category ?? "Happy"
+  );
+  const activeGroup =
+    categories.find((group) => group.category === activeCategory) ??
+    categories[0];
+
   function toggleMood(mood: string) {
     const alreadySelected = selectedMoods.includes(mood);
 
@@ -41,8 +65,26 @@ export function MoodSelector({
         </span>
       </div>
 
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {categories.map((group) => (
+          <button
+            key={group.category}
+            type="button"
+            onClick={() => setActiveCategory(group.category)}
+            className={cn(
+              "rounded-2xl border px-3 py-2 text-left text-xs font-semibold transition-all",
+              activeGroup?.category === group.category
+                ? "border-[var(--app-accent)] bg-[var(--app-soft)] text-[var(--app-accent)]"
+                : "border-[var(--app-border)] bg-[var(--app-surface-soft)] text-[var(--app-muted)] hover:text-[var(--app-text)]"
+            )}
+          >
+            {group.category}
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-wrap gap-2">
-        {moods.map((mood) => {
+        {(activeGroup?.moods ?? moods).map((mood) => {
           const active = selectedMoods.includes(mood);
 
           return (
@@ -63,8 +105,23 @@ export function MoodSelector({
         })}
       </div>
 
+      {selectedMoods.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--app-border)] pt-3">
+          {selectedMoods.map((mood) => (
+            <button
+              key={mood}
+              type="button"
+              onClick={() => toggleMood(mood)}
+              className="rounded-full bg-[var(--app-accent)] px-3 py-1 text-xs font-semibold text-white"
+            >
+              {mood} x
+            </button>
+          ))}
+        </div>
+      )}
+
       <p className="mt-3 text-xs leading-5 text-[var(--app-muted)]">
-        Select up to {MAX_MOOD_SELECTION} moods that match this memory.
+        Choose a major feeling, then select up to {MAX_MOOD_SELECTION} sub-feelings.
       </p>
     </div>
   );

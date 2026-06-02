@@ -12,6 +12,13 @@ create table public.media_assets (
   visibility text not null default 'private'::text,
   upload_status text not null default 'pending'::text,
   created_at timestamp with time zone not null default now(),
+  latitude double precision null,
+  longitude double precision null,
+  location_source text not null default 'unknown'::text,
+  original_size_bytes bigint null,
+  optimized_size_bytes bigint null,
+  optimization_status text not null default 'not_needed'::text,
+  used_for_location_suggestion boolean not null default false,
   constraint media_assets_pkey primary key (id),
   constraint media_assets_object_key_key unique (object_key),
   constraint media_assets_owner_id_fkey foreign KEY (owner_id) references auth.users (id) on delete CASCADE,
@@ -44,6 +51,25 @@ create table public.media_assets (
     (
       upload_status = any (
         array['pending'::text, 'uploaded'::text, 'failed'::text]
+      )
+    )
+  ),
+  constraint media_assets_location_source_check check (
+    (
+      location_source = any (
+        array['media_gps'::text, 'unknown'::text]
+      )
+    )
+  ),
+  constraint media_assets_optimization_status_check check (
+    (
+      optimization_status = any (
+        array[
+          'not_needed'::text,
+          'optimized'::text,
+          'skipped'::text,
+          'failed'::text
+        ]
       )
     )
   ),

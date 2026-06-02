@@ -44,8 +44,22 @@ export async function POST(request: Request) {
     const fileName = String(body.fileName || "");
     const fileType = String(body.fileType || "");
     const fileSize = Number(body.fileSize || 0);
+    const originalFileSize = Number(body.originalFileSize || fileSize);
+    const optimizedFileSize = Number(body.optimizedFileSize || fileSize);
     const purpose = String(body.purpose || "memory");
     const visibility = String(body.visibility || "private");
+    const latitude =
+      typeof body.latitude === "number" && Number.isFinite(body.latitude)
+        ? body.latitude
+        : null;
+    const longitude =
+      typeof body.longitude === "number" && Number.isFinite(body.longitude)
+        ? body.longitude
+        : null;
+    const optimizationStatus = String(
+      body.optimizationStatus || "not_needed"
+    );
+    const usedForLocationSuggestion = Boolean(body.usedForLocationSuggestion);
 
     if (!fileName || !fileType || !fileSize) {
       return NextResponse.json(
@@ -86,6 +100,17 @@ export async function POST(request: Request) {
       );
     }
 
+    if (
+      !["not_needed", "optimized", "skipped", "failed"].includes(
+        optimizationStatus
+      )
+    ) {
+      return NextResponse.json(
+        { message: "Invalid optimization status." },
+        { status: 400 }
+      );
+    }
+
     const extension = allowedTypes[fileType as keyof typeof allowedTypes];
     const objectKey = `users/${user.id}/${purpose}/${crypto.randomUUID()}.${extension}`;
 
@@ -114,6 +139,14 @@ export async function POST(request: Request) {
         file_name: fileName,
         mime_type: fileType,
         size_bytes: fileSize,
+        original_size_bytes: originalFileSize,
+        optimized_size_bytes: optimizedFileSize,
+        optimization_status: optimizationStatus,
+        latitude,
+        longitude,
+        location_source:
+          latitude !== null && longitude !== null ? "media_gps" : "unknown",
+        used_for_location_suggestion: usedForLocationSuggestion,
         media_kind: getMediaKind(fileType),
         purpose,
         visibility,

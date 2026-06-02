@@ -18,6 +18,12 @@ export type CreateMemoryState = {
     moods?: string[];
     privacy?: string[];
     locationName?: string[];
+    latitude?: string[];
+    longitude?: string[];
+    locationLabel?: string[];
+    locationSource?: string[];
+    locationConfidence?: string[];
+    locationAccuracyMeters?: string[];
     tags?: string[];
     mediaAssetIds?: string[];
   };
@@ -94,6 +100,21 @@ const TagsSchema = z.preprocess((value) => {
     .slice(0, 12);
 }, z.array(z.string().min(1).max(30)));
 
+const LocationSourceSchema = z.enum([
+  "manual",
+  "browser_gps",
+  "media_gps",
+  "mixed_media",
+  "unknown",
+]);
+
+const optionalNumber = z.preprocess((value) => {
+  if (typeof value !== "string" || value.trim().length === 0) return null;
+
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+}, z.number().nullable());
+
 const MediaAssetIdsSchema = z.preprocess((value) => {
   if (typeof value !== "string" || value.trim().length === 0) return [];
 
@@ -123,6 +144,30 @@ const CreateMemorySchema = z.object({
   privacy: MemoryPrivacySchema,
 
   locationName: optionalText(120),
+  locationLabel: optionalText(160),
+  latitude: optionalNumber.refine(
+    (value) => value === null || (value >= -90 && value <= 90),
+    "Invalid latitude."
+  ),
+  longitude: optionalNumber.refine(
+    (value) => value === null || (value >= -180 && value <= 180),
+    "Invalid longitude."
+  ),
+  locationSource: z.preprocess((value) => {
+    if (typeof value !== "string" || value.trim().length === 0) {
+      return "unknown";
+    }
+
+    return value;
+  }, LocationSourceSchema),
+  locationConfidence: optionalNumber.refine(
+    (value) => value === null || (value >= 0 && value <= 1),
+    "Invalid location confidence."
+  ),
+  locationAccuracyMeters: optionalNumber.refine(
+    (value) => value === null || value >= 0,
+    "Invalid location accuracy."
+  ),
 
   tags: TagsSchema,
 
@@ -198,6 +243,12 @@ export async function createMemoryAction(
     moods: formData.get("moods"),
     privacy: formData.get("privacy"),
     locationName: formData.get("locationName"),
+    locationLabel: formData.get("locationLabel"),
+    latitude: formData.get("latitude"),
+    longitude: formData.get("longitude"),
+    locationSource: formData.get("locationSource"),
+    locationConfidence: formData.get("locationConfidence"),
+    locationAccuracyMeters: formData.get("locationAccuracyMeters"),
     tags: formData.get("tags"),
     mediaAssetIds: formData.get("mediaAssetIds"),
   });
@@ -217,6 +268,12 @@ export async function createMemoryAction(
     moods,
     privacy,
     locationName,
+    locationLabel,
+    latitude,
+    longitude,
+    locationSource,
+    locationConfidence,
+    locationAccuracyMeters,
     tags,
     mediaAssetIds,
   } = validatedFields.data;
@@ -299,7 +356,14 @@ export async function createMemoryAction(
       mood: moods[0] ?? null,
       moods,
       privacy,
-      location_name: locationName,
+      location_name: locationLabel ?? locationName,
+      location_label: locationLabel ?? locationName,
+      latitude,
+      longitude,
+      location_source:
+        latitude !== null && longitude !== null ? locationSource : "unknown",
+      location_confidence: locationConfidence,
+      location_accuracy_meters: locationAccuracyMeters,
       tags,
       entry_date: entryDate,
       entry_timezone: entryTimezone || "Asia/Kolkata",
@@ -531,6 +595,12 @@ export async function editMemoryAction(
     moods: formData.get("moods"),
     privacy: formData.get("privacy"),
     locationName: formData.get("locationName"),
+    locationLabel: formData.get("locationLabel"),
+    latitude: formData.get("latitude"),
+    longitude: formData.get("longitude"),
+    locationSource: formData.get("locationSource"),
+    locationConfidence: formData.get("locationConfidence"),
+    locationAccuracyMeters: formData.get("locationAccuracyMeters"),
     tags: formData.get("tags"),
     existingMediaAssetIds: formData.get("existingMediaAssetIds"),
     mediaAssetIds: formData.get("mediaAssetIds"),
@@ -667,8 +737,17 @@ export async function editMemoryAction(
     mood: editData.moods[0] ?? null,
     moods: editData.moods,
     privacy: editData.privacy,
-    location_name: editData.privacy === "vault" ? null : editData.locationName,
-    tags: editData.privacy === "vault" ? [] : editData.tags,
+    location_name: editData.locationLabel ?? editData.locationName,
+    location_label: editData.locationLabel ?? editData.locationName,
+    latitude: editData.latitude,
+    longitude: editData.longitude,
+    location_source:
+      editData.latitude !== null && editData.longitude !== null
+        ? editData.locationSource
+        : "unknown",
+    location_confidence: editData.locationConfidence,
+    location_accuracy_meters: editData.locationAccuracyMeters,
+    tags: editData.tags,
     entry_date: editData.entryDate,
     entry_timezone: editData.entryTimezone || "Asia/Kolkata",
     media_count: nextAssetIds.length,
