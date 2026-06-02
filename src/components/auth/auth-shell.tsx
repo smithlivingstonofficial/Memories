@@ -1,9 +1,11 @@
 "use client";
 
 import { ReactNode } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Heart, LockKeyhole, ShieldCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { legalNavLinks } from "@/components/legal/legal-content";
 
 type AuthShellProps = {
   children: ReactNode;
@@ -39,6 +41,7 @@ export function AuthShell({ children, variant = "brand" }: AuthShellProps) {
 
         <div className="relative mx-auto flex min-h-dvh w-full max-w-[560px] flex-col items-center justify-center px-4 py-5 sm:px-6">
           {children}
+          <AuthLegalLinks />
         </div>
       </main>
     );
@@ -132,8 +135,32 @@ export function AuthShell({ children, variant = "brand" }: AuthShellProps) {
 
         <section className="mx-auto flex h-full w-full max-w-[480px] flex-col items-center justify-center lg:ml-auto lg:mr-0">
           {children}
+          <AuthLegalLinks />
         </section>
       </div>
     </main>
+  );
+}
+
+function AuthLegalLinks() {
+  return (
+    <nav
+      className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 px-2 text-[11px] font-semibold text-slate-500"
+      aria-label="Legal links"
+    >
+      {legalNavLinks
+        .filter((link) =>
+          ["privacy", "terms", "disclaimer", "contact"].includes(link.id)
+        )
+        .map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            className="transition hover:text-[#6366F1]"
+          >
+            {link.label}
+          </Link>
+        ))}
+    </nav>
   );
 }

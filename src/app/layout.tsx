@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Plus_Jakarta_Sans, Sora } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { getPublicSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -17,6 +18,7 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getPublicSiteUrl()),
   title: "Memories — Your life, remembered beautifully",
   description:
     "A premium, privacy-first diary and social memory platform to save your moments, protect your Vault, and share only what you choose.",
