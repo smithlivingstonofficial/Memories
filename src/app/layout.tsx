@@ -50,6 +50,7 @@ export default function RootLayout({
   return (
     <html lang="en" data-theme="light" suppressHydrationWarning>
       <body className={`${jakarta.variable} ${sora.variable} antialiased`}>
+        <meta name="google-site-verification" content="eoB80USkT-nODtKn8n_t2p_Q1TJrbwk7rI1mNr-FaZg" />
         <Script
           id="memories-theme-script"
           strategy="beforeInteractive"
