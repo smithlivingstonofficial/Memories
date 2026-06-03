@@ -4,6 +4,7 @@ import { Plus_Jakarta_Sans, Sora } from "next/font/google";
 import { Suspense } from "react";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { RouteLoadingShell } from "@/components/layout/route-loading-shell";
+import { PwaInstallPrompt } from "@/components/pwa/pwa-install-prompt";
 import { getPublicSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 
@@ -43,6 +44,7 @@ export const metadata: Metadata = {
     template: "%s | Memories",
   },
   description: siteDescription,
+  manifest: "/manifest.webmanifest",
   keywords: siteKeywords,
   authors: [{ name: "Ellabs", url: "https://ellabs.in" }],
   creator: "Ellabs",
@@ -98,6 +100,11 @@ export const metadata: Metadata = {
   other: {
     "theme-color": "#0b0620",
   },
+  appleWebApp: {
+    capable: true,
+    title: "Memories",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 const themeScript = `
@@ -134,6 +141,9 @@ export default function RootLayout({
 
         <ThemeProvider>
           <Suspense fallback={<RouteLoadingShell />}>{children}</Suspense>
+          <Suspense fallback={null}>
+            <PwaInstallPrompt />
+          </Suspense>
         </ThemeProvider>
       </body>
     </html>
