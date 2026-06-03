@@ -44,6 +44,7 @@ function PersistentAppLayout({ children, user }: AppLayoutProps) {
     getInitialSidebarCollapsed
   );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const hideMobileBottomNav = pathname.startsWith("/messages");
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -112,12 +113,18 @@ function PersistentAppLayout({ children, user }: AppLayoutProps) {
           <main className="flex h-full min-w-0 flex-1 flex-col">
             <AppTopBar user={user} />
 
-            <section className="min-h-0 flex-1 overflow-y-auto px-4 pb-[112px] pt-4 sm:px-6 lg:px-8 lg:pb-8">
+            <section
+              className={
+                hideMobileBottomNav
+                  ? "min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-4 sm:px-6 lg:px-8 lg:pb-8"
+                  : "min-h-0 flex-1 overflow-y-auto px-4 pb-[112px] pt-4 sm:px-6 lg:px-8 lg:pb-8"
+              }
+            >
               {children}
             </section>
           </main>
 
-          {!mobileMenuOpen && (
+          {!mobileMenuOpen && !hideMobileBottomNav && (
             <MobileBottomNav
               pathname={pathname}
               menuOpen={mobileMenuOpen}

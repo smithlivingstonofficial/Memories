@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useActionState, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  ImagePlus,
+  ChevronDown,
   Loader2,
   LockKeyhole,
   Tags,
-  ShieldCheck,
   Trash2,
   UploadCloud,
 } from "lucide-react";
@@ -33,6 +33,7 @@ import {
 } from "@/components/create/location-fields";
 import { MoodSelector } from "@/components/create/mood-selector";
 import { VAULT_MOODS } from "@/lib/moods";
+import { cn } from "@/lib/utils";
 
 const initialState: CreateVaultEntryState = {
   message: "",
@@ -182,84 +183,108 @@ export function CreateVaultScreen() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1500px]">
-      <section className="relative mb-5 overflow-hidden rounded-[2rem] border border-[var(--app-border)] p-5 shadow-[0_24px_80px_var(--app-shadow)] [background:var(--vault-hero)] sm:p-6">
-        <div className="pointer-events-none absolute -left-16 -top-16 size-56 rounded-full bg-[#6366F1]/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 right-0 size-64 rounded-full bg-[#FFE4E6]/25 blur-3xl" />
+    <div className="-mx-3 w-[calc(100%+1.5rem)] max-w-[1500px] sm:mx-auto sm:w-full lg:h-[calc(100dvh-3rem)] lg:min-h-0">
+      <form
+        id="create-vault-entry-form"
+        action={formAction}
+        className="space-y-3 pb-[13rem] sm:space-y-4 sm:pb-0 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:space-y-4 lg:overflow-hidden"
+      >
+        <input
+          type="hidden"
+          name="moods"
+          value={JSON.stringify(selectedMoods)}
+        />
 
-        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <input
+          type="hidden"
+          name="mediaAssetIds"
+          value={JSON.stringify(uploadedAssets.map((asset) => asset.assetId))}
+        />
+
+      <section className="mem-card rounded-[1.2rem] p-3 sm:rounded-[2rem] sm:p-4 lg:shrink-0">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <Link
               href="/create"
-              className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-accent)]"
+              className="mb-2 inline-flex items-center gap-2 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-accent)] lg:mb-1"
             >
               <ArrowLeft size={16} />
-              Back to Create
+              <span className="sm:hidden">Back</span>
+              <span className="hidden sm:inline">Back to Create</span>
             </Link>
 
-            <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
+            <p className="hidden items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)] sm:inline-flex">
               <LockKeyhole size={14} />
               Vault Writer
             </p>
 
-            <h1 className="font-brand text-3xl font-semibold tracking-[-0.055em] text-[var(--app-text)] sm:text-4xl">
-              Your private world.
+            <h1 className="mt-0 font-brand text-[1.65rem] font-semibold leading-tight text-[var(--app-text)] sm:mt-2 sm:text-4xl lg:text-3xl">
+              Create Vault Entry
             </h1>
 
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--app-muted)]">
+            <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-[var(--app-muted)] sm:block lg:hidden">
               Write thoughts that are only for you. Vault entries are private by
               default and never appear in Home or Discover.
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <VaultInfoPill label="Privacy" value="Only you" />
-            <VaultInfoPill label="Words" value={wordCount.toString()} />
-            <VaultInfoPill
-              label="Media"
-              value={uploadedAssets.length.toString()}
-            />
+          <div className="hidden flex-col gap-3 sm:flex lg:items-end">
+            <div className="flex flex-wrap gap-2">
+              <ComposerChip label="Privacy" value="Vault" />
+              <ComposerChip label="Words" value={wordCount.toString()} />
+              <ComposerChip label="Media" value={`${uploadedAssets.length}/10`} />
+            </div>
+
+            <div className="flex gap-2">
+              <Link
+                href="/create"
+                className="inline-flex h-11 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-5 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
+              >
+                Cancel
+              </Link>
+
+              <Button
+                type="submit"
+                disabled={pending || uploading}
+                className="h-11 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white shadow-[0_16px_38px_rgba(99,102,241,0.24)] hover:bg-[var(--app-accent-hover)]"
+              >
+                {pending ? "Saving..." : "Save to Vault"}
+                {!pending && <ArrowRight size={17} />}
+              </Button>
+            </div>
           </div>
         </div>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <section className="mem-card rounded-[2rem] p-5 sm:p-6">
-          <form action={formAction} className="space-y-6">
-            <input
-              type="hidden"
-              name="moods"
-              value={JSON.stringify(selectedMoods)}
-            />
+      <div className="grid gap-3 sm:gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[minmax(0,1fr)_440px]">
+        <section className="min-w-0 lg:min-h-0">
+          <div className="mem-card flex h-full min-h-0 flex-col overflow-hidden rounded-[1.2rem] sm:rounded-[2rem]">
+            <div className="flex items-center justify-between gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface)] p-3 sm:gap-3 sm:p-4 lg:shrink-0">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--app-muted)] sm:text-xs sm:tracking-[0.16em]">
+                  Vault privacy
+                </p>
+                <p className="mt-1 hidden text-sm text-[var(--app-muted)] sm:block">
+                  Only you can see this entry.
+                </p>
+              </div>
+              <span className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
+                Private
+              </span>
+            </div>
 
-            <input
-              type="hidden"
-              name="mediaAssetIds"
-              value={JSON.stringify(
-                uploadedAssets.map((asset) => asset.assetId)
-              )}
-            />
-
-            <div className="mem-card-strong rounded-[1.7rem] p-4 sm:p-5">
-              <label className="mb-3 block text-sm font-semibold text-[var(--app-text)]">
-                Vault title
-              </label>
-
+            <div className="flex min-h-0 flex-1 flex-col p-3.5 sm:p-6 lg:overflow-hidden">
               <input
                 name="title"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="A thought I want to keep..."
-                className="h-14 w-full border-none bg-transparent font-brand text-2xl font-semibold tracking-[-0.04em] text-[var(--app-text)] outline-none placeholder:text-[var(--app-faint)] sm:text-3xl"
+                className="w-full border-none bg-transparent font-brand text-xl font-semibold leading-tight text-[var(--app-text)] outline-none placeholder:text-[var(--app-faint)] sm:text-4xl"
               />
 
               <FieldError message={state.errors?.title?.[0]} />
-            </div>
 
-            <div className="mem-card-strong rounded-[1.7rem] p-4 sm:p-5">
-              <label className="mb-3 block text-sm font-semibold text-[var(--app-text)]">
-                Private diary
-              </label>
+              <div className="my-3.5 h-px bg-[var(--app-border)] sm:my-5" />
 
               <textarea
                 name="content"
@@ -267,23 +292,42 @@ export function CreateVaultScreen() {
                 onChange={(event) => setContent(event.target.value)}
                 placeholder="Write freely. This space is private..."
                 rows={13}
-                className="min-h-[340px] w-full resize-none border-none bg-transparent text-[16px] leading-8 text-[var(--app-text)] outline-none placeholder:text-[var(--app-faint)]"
+                className="min-h-[52dvh] w-full flex-1 resize-none border-none bg-transparent text-[15.5px] leading-7 text-[var(--app-text)] outline-none placeholder:text-[var(--app-faint)] sm:min-h-[460px] sm:text-[17px] sm:leading-8 lg:min-h-0"
               />
-
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--app-border)] pt-4">
-                <p className="text-xs text-[var(--app-muted)]">
-                  No likes. No reflections. No public sharing.
-                </p>
-
-                <p className="text-xs font-medium text-[var(--app-muted)]">
-                  {wordCount} words
-                </p>
-              </div>
-
               <FieldError message={state.errors?.content?.[0]} />
             </div>
 
-            <div className="mem-card-strong rounded-[1.7rem] p-4">
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 text-xs text-[var(--app-muted)] sm:justify-between sm:px-6 lg:shrink-0">
+              <span className="hidden sm:inline">
+                No likes. No reflections. No public sharing.
+              </span>
+              <span className="font-semibold">{wordCount} words</span>
+            </div>
+          </div>
+        </section>
+
+        <aside className="min-w-0 lg:min-h-0">
+          <div className="space-y-3 sm:space-y-4 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+            <div className="hidden items-center justify-between rounded-[1.35rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-3 lg:flex">
+              <div>
+                <h2 className="font-brand text-lg font-semibold text-[var(--app-text)]">
+                  Vault details
+                </h2>
+                <p className="text-xs text-[var(--app-muted)]">
+                  Add only what helps this entry.
+                </p>
+              </div>
+              <span className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
+                {uploadedAssets.length}/10 media
+              </span>
+            </div>
+
+            <SidePanelSection
+              icon={<LockKeyhole size={17} />}
+              title="Mood"
+              description="Choose the private feeling for this entry."
+              defaultOpen
+            >
               <MoodSelector
                 moods={VAULT_MOODS}
                 selectedMoods={selectedMoods}
@@ -291,9 +335,8 @@ export function CreateVaultScreen() {
               />
 
               <FieldError message={state.errors?.moods?.[0]} />
-            </div>
+            </SidePanelSection>
 
-            <div className="grid gap-5 lg:grid-cols-2">
               <LocationFields
                 locationName={locationName}
                 latitude={latitude}
@@ -314,11 +357,11 @@ export function CreateVaultScreen() {
                 }}
               />
 
-              <div className="mem-card-strong rounded-[1.7rem] p-4">
-                <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--app-text)]">
-                  <Tags size={16} />
-                  Tags
-                </label>
+            <SidePanelSection
+              icon={<Tags size={17} />}
+              title="Tags"
+              description="Use commas to keep this private entry searchable."
+            >
 
                 <input
                   name="tags"
@@ -327,24 +370,14 @@ export function CreateVaultScreen() {
                   placeholder="private, healing, dream"
                   className="mem-input h-12 w-full rounded-2xl px-4 text-[15px] outline-none transition-all placeholder:text-[var(--app-faint)] focus:border-[var(--app-accent)]"
                 />
-              </div>
-            </div>
+            </SidePanelSection>
 
-            <div className="mem-card-strong rounded-[1.7rem] p-4">
-              <div className="mb-4 flex items-center justify-between gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-[var(--app-text)]">
-                    Private media
-                  </label>
-                  <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
-                    Optional photos or videos connected to this Vault entry.
-                  </p>
-                </div>
-
-                <span className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
-                  {uploadedAssets.length}/10
-                </span>
-              </div>
+            <SidePanelSection
+              icon={<UploadCloud size={17} />}
+              title="Private media"
+              description="Optional photos or videos connected to this Vault entry."
+              action={`${uploadedAssets.length}/10`}
+            >
 
               <input
                 ref={fileInputRef}
@@ -359,7 +392,7 @@ export function CreateVaultScreen() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading || uploadedAssets.length >= 10}
-                className="flex min-h-[150px] w-full flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[var(--app-border)] bg-[var(--app-surface-soft)] p-6 text-center transition hover:border-[var(--app-accent)] disabled:opacity-60"
+                className="flex min-h-[84px] w-full flex-col items-center justify-center rounded-[1.25rem] border border-dashed border-[var(--app-border)] bg-[var(--app-surface-soft)] p-3 text-center transition hover:border-[var(--app-accent)] disabled:opacity-60 sm:min-h-[112px] sm:rounded-[1.5rem] sm:p-5 lg:min-h-[88px] lg:p-3"
               >
                 {uploading ? (
                   <Loader2 className="mb-3 animate-spin text-[var(--app-accent)]" />
@@ -371,7 +404,7 @@ export function CreateVaultScreen() {
                   {uploading ? "Uploading privately..." : "Upload private media"}
                 </p>
 
-                <p className="mt-1 max-w-sm text-xs leading-5 text-[var(--app-muted)]">
+                <p className="mt-1 hidden max-w-sm text-xs leading-5 text-[var(--app-muted)] sm:block">
                   Media is stored privately in Cloudflare R2.
                 </p>
               </button>
@@ -383,27 +416,27 @@ export function CreateVaultScreen() {
                 </p>
               )}
 
-              <p className="mt-3 text-xs leading-5 text-[var(--app-muted)]">
+              <p className="mt-3 hidden text-xs leading-5 text-[var(--app-muted)] sm:block">
                 Large images are optimized before upload. Videos keep their original file and must stay under the upload limit.
               </p>
 
               {uploadedAssets.length > 0 && (
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
                   {uploadedAssets.map((asset) => (
                     <div
                       key={asset.assetId}
-                      className="group relative overflow-hidden rounded-[1.3rem] border border-[var(--app-border)] bg-[var(--app-surface-soft)]"
+                      className="group relative h-24 w-28 shrink-0 overflow-hidden rounded-[1.1rem] border border-[var(--app-border)] bg-[var(--app-surface-soft)]"
                     >
                       {asset.mimeType.startsWith("image/") ? (
                         <img
                           src={asset.previewUrl}
                           alt={asset.fileName}
-                          className="h-36 w-full object-cover"
+                          className="h-full w-full object-cover"
                         />
                       ) : (
                         <video
                           src={asset.previewUrl}
-                          className="h-36 w-full object-cover"
+                          className="h-full w-full object-cover"
                           muted
                           controls
                         />
@@ -412,173 +445,115 @@ export function CreateVaultScreen() {
                       <button
                         type="button"
                         onClick={() => removeAsset(asset.assetId)}
-                        className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-xl bg-[var(--app-surface-strong)] text-[var(--app-muted)] shadow-sm transition hover:text-rose-600"
+                        className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-xl bg-[var(--app-surface-strong)] text-[var(--app-muted)] shadow-sm transition hover:text-rose-600"
                       >
-                        <Trash2 size={15} />
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </SidePanelSection>
 
             {state.message && (
               <div className="rounded-2xl border border-rose-300/40 bg-rose-500/10 p-4 text-sm leading-6 text-rose-500">
                 {state.message}
               </div>
             )}
-
-            <div className="sticky bottom-4 z-20 rounded-[1.5rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-3 shadow-[0_24px_70px_var(--app-shadow)] backdrop-blur-2xl">
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Link
-                  href="/create"
-                  className="flex h-12 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-5 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)] sm:flex-1"
-                >
-                  Cancel
-                </Link>
-
-                <Button
-                  type="submit"
-                  disabled={pending || uploading}
-                  className="h-12 rounded-2xl bg-[var(--app-accent)] text-[15px] font-semibold text-white shadow-[0_16px_38px_rgba(99,102,241,0.24)] hover:bg-[var(--app-accent-hover)] sm:flex-[1.4]"
-                >
-                  {pending ? "Saving to Vault..." : "Save to Vault"}
-                  {!pending && <ArrowRight size={17} />}
-                </Button>
-              </div>
-            </div>
-          </form>
-        </section>
-
-        <aside className="space-y-5">
-          <div className="sticky top-4 space-y-5">
-            <VaultPreview
-              title={title}
-              content={content}
-              moods={selectedMoods}
-              locationName={locationName}
-              media={uploadedAssets[0]}
-            />
-
-            <div className="mem-card rounded-[2rem] p-5">
-              <div className="mb-3 flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
-                  <ShieldCheck size={17} />
-                </div>
-
-                <div>
-                  <h3 className="font-brand text-base font-semibold tracking-[-0.03em] text-[var(--app-text)]">
-                    Only you can see this
-                  </h3>
-                  <p className="text-xs text-[var(--app-muted)]">
-                    Vault is private.
-                  </p>
-                </div>
-              </div>
-
-              <p className="text-sm leading-6 text-[var(--app-muted)]">
-                Vault entries are saved with private visibility and are not
-                shown in Home, Discover, public profiles, or Inner Circle feeds.
-              </p>
-            </div>
           </div>
         </aside>
       </div>
-    </div>
-  );
-}
 
-function VaultInfoPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[1.2rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 py-3 backdrop-blur-xl">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
-        {label}
-      </p>
-      <p className="mt-1 font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function VaultPreview({
-  title,
-  content,
-  moods,
-  locationName,
-  media,
-}: {
-  title: string;
-  content: string;
-  moods: string[];
-  locationName: string;
-  media?: UploadedAsset;
-}) {
-  return (
-    <div className="mem-card rounded-[2rem] p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-          Vault Preview
-        </h2>
-
-        <span className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
-          Private
-        </span>
-      </div>
-
-      <div className="rounded-[1.6rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-4">
-        {media ? (
-          media.mimeType.startsWith("image/") ? (
-            <img
-              src={media.previewUrl}
-              alt="Preview"
-              className="mb-4 h-60 w-full rounded-[1.3rem] object-cover"
-            />
-          ) : (
-            <video
-              src={media.previewUrl}
-              className="mb-4 h-60 w-full rounded-[1.3rem] object-cover"
-              muted
-              controls
-            />
-          )
-        ) : (
-          <div className="mb-4 flex h-60 items-center justify-center rounded-[1.3rem] [background:var(--vault-hero)]">
-            <ImagePlus className="text-[var(--app-accent)]" />
-          </div>
-        )}
-
-        <div className="mb-3 flex flex-wrap gap-2">
-          {moods.map((mood) => (
-            <span
-              key={mood}
-              className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-medium text-[var(--app-accent)]"
-            >
-              {mood}
-            </span>
-          ))}
-
-          <span className="inline-flex items-center gap-1 rounded-full border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-muted)]">
-            <LockKeyhole size={12} />
-            Vault
-          </span>
-        </div>
-
-        <h3 className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-          {title || "Untitled Vault entry"}
-        </h3>
-
-        <p className="mt-2 line-clamp-6 text-sm leading-6 text-[var(--app-muted)]">
-          {content || "Your private writing preview will appear here..."}
+      <div className="fixed inset-x-2 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] z-40 rounded-[1.2rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-2 shadow-[0_18px_48px_var(--app-shadow)] backdrop-blur-2xl sm:hidden">
+        <p className="mb-2 px-2 text-center text-[11px] font-semibold text-[var(--app-muted)]">
+          Vault - {uploadedAssets.length}/10 media
         </p>
-
-        {locationName && (
-          <p className="mt-4 flex items-center gap-2 text-xs text-[var(--app-muted)]">
-            {locationName}
-          </p>
-        )}
+        <Button
+          type="submit"
+          disabled={pending || uploading}
+          className="h-12 w-full rounded-2xl bg-[var(--app-accent)] text-sm font-semibold text-white shadow-[0_16px_38px_rgba(99,102,241,0.24)] hover:bg-[var(--app-accent-hover)]"
+        >
+          {pending ? "Saving..." : "Save to Vault"}
+          {!pending && <ArrowRight size={17} />}
+        </Button>
       </div>
+      </form>
     </div>
+  );
+}
+
+function ComposerChip({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-2 rounded-full border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-3 py-1.5 text-xs text-[var(--app-muted)]">
+      <span className="font-semibold uppercase tracking-[0.14em]">
+        {label}
+      </span>
+      <strong className="font-brand text-sm font-semibold text-[var(--app-text)]">
+        {value}
+      </strong>
+    </span>
+  );
+}
+
+function SidePanelSection({
+  icon,
+  title,
+  description,
+  action,
+  defaultOpen = false,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  action?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [mobileOpen, setMobileOpen] = useState(defaultOpen);
+
+  return (
+    <section className="mem-card-strong rounded-[1.35rem] p-3 sm:rounded-[1.7rem] sm:p-4">
+      <button
+        type="button"
+        onClick={() => setMobileOpen((current) => !current)}
+        className="flex w-full items-start justify-between gap-3 text-left md:pointer-events-none"
+        aria-expanded={mobileOpen}
+      >
+        <span className="flex min-w-0 items-start gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)] sm:size-10">
+            {icon}
+          </span>
+          <span className="min-w-0">
+            <span className="block font-brand text-base font-semibold text-[var(--app-text)] sm:text-lg">
+              {title}
+            </span>
+            <span className="mt-1 hidden text-xs leading-5 text-[var(--app-muted)] sm:block">
+              {description}
+            </span>
+          </span>
+        </span>
+
+        <span className="flex shrink-0 items-center gap-2">
+          {action && (
+            <span className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
+              {action}
+            </span>
+          )}
+          <ChevronDown
+            size={18}
+            className={cn(
+              "text-[var(--app-muted)] transition md:hidden",
+              mobileOpen && "rotate-180"
+            )}
+          />
+        </span>
+      </button>
+
+      <div className={cn("mt-4", mobileOpen ? "block" : "hidden md:block")}>
+        {children}
+      </div>
+    </section>
   );
 }
 

@@ -320,21 +320,37 @@ export async function getMessagesInboxData({
     }
   }
 
-  const unreadByConversation = new Map<string, number>();
+  const unreadByConversation = new Map<string, number>(
+    conversationIds.map((conversationId) => [conversationId, 0])
+  );
+  const oldestLastReadAt = Array.from(lastReadByConversation.values())
+    .filter(Boolean)
+    .sort()[0];
 
-  for (const conversationId of conversationIds) {
+  const unreadQuery = supabase
+    .from("messages")
+    .select("conversation_id, sender_id, created_at")
+    .in("conversation_id", conversationIds)
+    .neq("sender_id", userId);
+
+  const { data: unreadCandidates } = oldestLastReadAt
+    ? await unreadQuery.gt("created_at", oldestLastReadAt)
+    : await unreadQuery;
+
+  for (const message of (unreadCandidates ?? []) as Pick<
+    MessageRow,
+    "conversation_id" | "sender_id" | "created_at"
+  >[]) {
     const lastReadAt =
-      lastReadByConversation.get(conversationId) ??
+      lastReadByConversation.get(message.conversation_id) ??
       "1970-01-01T00:00:00.000Z";
 
-    const { count } = await supabase
-      .from("messages")
-      .select("id", { count: "exact", head: true })
-      .eq("conversation_id", conversationId)
-      .neq("sender_id", userId)
-      .gt("created_at", lastReadAt);
+    if (message.created_at <= lastReadAt) continue;
 
-    unreadByConversation.set(conversationId, count ?? 0);
+    unreadByConversation.set(
+      message.conversation_id,
+      (unreadByConversation.get(message.conversation_id) ?? 0) + 1
+    );
   }
 
   const list: ConversationListItem[] = [];

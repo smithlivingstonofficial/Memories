@@ -8,6 +8,11 @@ import { getAuthenticatedAppUser } from "@/lib/auth/get-authenticated-app-user";
 import { cacheTags } from "@/lib/cache-tags";
 import { getDiaryDayPageData } from "@/lib/diary/get-diary-day-page-data";
 
+export const unstable_instant = {
+  prefetch: "runtime",
+  samples: [{ params: { date: "2026-06-03" } }],
+};
+
 type DiaryDayPageProps = {
   params: Promise<{
     date: string;

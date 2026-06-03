@@ -8,6 +8,10 @@ import { getAuthenticatedAppUser } from "@/lib/auth/get-authenticated-app-user";
 import { cacheTags } from "@/lib/cache-tags";
 import { getProfilePageData } from "@/lib/profile/get-profile-page-data";
 
+export const unstable_instant = {
+  prefetch: "static",
+};
+
 export default function ProfilePage() {
   return (
     <Suspense fallback={<AppContentLoading />}>

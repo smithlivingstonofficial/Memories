@@ -246,32 +246,6 @@ export async function sendMessageAction(
     .eq("conversation_id", conversationId)
     .eq("user_id", user.id);
 
-  const { data: otherMember } = await supabase
-    .from("conversation_members")
-    .select("user_id")
-    .eq("conversation_id", conversationId)
-    .neq("user_id", user.id)
-    .maybeSingle();
-
-  let otherUsername: string | null = null;
-
-  if (otherMember?.user_id) {
-    const { data: otherProfile } = await supabase
-      .from("public_profiles")
-      .select("username")
-      .eq("id", otherMember.user_id)
-      .maybeSingle();
-
-    otherUsername = otherProfile?.username ?? null;
-  }
-
-  revalidatePath("/messages");
-  revalidatePath(`/messages/${conversationId}`);
-
-  if (otherUsername) {
-    revalidatePath(`/messages/${otherUsername}`);
-  }
-
   return {
     success: true,
     message: "Message sent.",
@@ -309,32 +283,6 @@ export async function markConversationReadAction(
       success: false,
       message: error.message,
     };
-  }
-
-  const { data: otherMember } = await supabase
-    .from("conversation_members")
-    .select("user_id")
-    .eq("conversation_id", conversationId)
-    .neq("user_id", user.id)
-    .maybeSingle();
-
-  let otherUsername: string | null = null;
-
-  if (otherMember?.user_id) {
-    const { data: otherProfile } = await supabase
-      .from("public_profiles")
-      .select("username")
-      .eq("id", otherMember.user_id)
-      .maybeSingle();
-
-    otherUsername = otherProfile?.username ?? null;
-  }
-
-  revalidatePath("/messages");
-  revalidatePath(`/messages/${conversationId}`);
-
-  if (otherUsername) {
-    revalidatePath(`/messages/${otherUsername}`);
   }
 
   return {

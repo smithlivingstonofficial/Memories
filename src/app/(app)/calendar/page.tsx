@@ -8,6 +8,10 @@ import { getAuthenticatedAppUser } from "@/lib/auth/get-authenticated-app-user";
 import { cacheTags } from "@/lib/cache-tags";
 import { getDiaryCalendarPageData } from "@/lib/diary/get-diary-calendar-page-data";
 
+export const unstable_instant = {
+  prefetch: "static",
+};
+
 type CalendarPageProps = {
   searchParams?: Promise<{
     month?: string;

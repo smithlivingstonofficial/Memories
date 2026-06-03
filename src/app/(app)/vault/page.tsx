@@ -10,6 +10,10 @@ import { cacheTags } from "@/lib/cache-tags";
 import { getVaultEntries } from "@/lib/memories/get-vault-entries";
 import { getVaultAccessState } from "@/lib/vault/access";
 
+export const unstable_instant = {
+  prefetch: "static",
+};
+
 export default function VaultPage() {
   return (
     <Suspense fallback={<AppContentLoading />}>

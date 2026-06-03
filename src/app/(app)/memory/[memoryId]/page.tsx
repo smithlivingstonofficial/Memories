@@ -8,6 +8,11 @@ import { getAuthenticatedAppUser } from "@/lib/auth/get-authenticated-app-user";
 import { cacheTags } from "@/lib/cache-tags";
 import { getMemoryDetailData } from "@/lib/memories/get-memory-detail-data";
 
+export const unstable_instant = {
+  prefetch: "runtime",
+  samples: [{ params: { memoryId: "00000000-0000-4000-8000-000000000001" } }],
+};
+
 type MemoryDetailPageProps = {
   params: Promise<{
     memoryId: string;

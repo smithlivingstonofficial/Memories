@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useActionState, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
+  ChevronDown,
   CheckCircle2,
-  ImagePlus,
   Loader2,
   LockKeyhole,
+  Sparkles,
   Tags,
   Trash2,
   UploadCloud,
@@ -108,6 +109,7 @@ export function EditMemoryScreen({
   const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
+  const [privacyDialogOpen, setPrivacyDialogOpen] = useState(false);
 
   const wordCount = useMemo(() => {
     return content.trim().length === 0
@@ -118,6 +120,9 @@ export function EditMemoryScreen({
   const mediaCount = existingMedia.length + uploadedAssets.length;
   const backHref = isVault ? "/vault" : `/memory/${memory.id}`;
   const moodOptions = isVault ? VAULT_MOODS : MEMORY_MOODS;
+  const selectedPrivacy = MEMORY_PRIVACY_OPTIONS.find(
+    (item) => item.value === privacy
+  );
   const vaultNeedsUnlock = privacy === "vault" && !vaultAccess?.isUnlocked;
 
   async function handleFileChange(files: FileList | null) {
@@ -226,87 +231,121 @@ export function EditMemoryScreen({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1500px]">
-      <section className="mem-card mb-5 rounded-[2rem] p-5 sm:p-6">
+    <div className="-mx-3 w-[calc(100%+1.5rem)] max-w-[1500px] sm:mx-auto sm:w-full lg:h-[calc(100dvh-3rem)] lg:min-h-0">
+      <form
+        action={formAction}
+        className="space-y-3 pb-[13rem] sm:space-y-4 sm:pb-0 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:space-y-4 lg:overflow-hidden"
+      >
+        <input type="hidden" name="mode" value={mode} />
+        <input type="hidden" name="memoryId" value={memory.id} />
+        <input
+          type="hidden"
+          name="moods"
+          value={JSON.stringify(selectedMoods)}
+        />
+        <input
+          type="hidden"
+          name="entryTimezone"
+          value={memory.entryTimezone || "Asia/Kolkata"}
+        />
+        <input
+          type="hidden"
+          name="existingMediaAssetIds"
+          value={JSON.stringify(existingMedia.map((asset) => asset.assetId))}
+        />
+        <input
+          type="hidden"
+          name="mediaAssetIds"
+          value={JSON.stringify(uploadedAssets.map((asset) => asset.assetId))}
+        />
+
+      <section className="mem-card rounded-[1.2rem] p-3 sm:rounded-[2rem] sm:p-4 lg:shrink-0">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <Link
               href={backHref}
-              className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-accent)]"
+              className="mb-2 inline-flex items-center gap-2 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-accent)] lg:mb-1"
             >
               <ArrowLeft size={16} />
-              {isVault ? "Back to Vault" : "Back to Memory"}
+              <span className="sm:hidden">Back</span>
+              <span className="hidden sm:inline">
+                {isVault ? "Back to Vault" : "Back to Memory"}
+              </span>
             </Link>
 
-            <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
+            <p className="hidden items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)] sm:inline-flex">
               <LockKeyhole size={14} />
               {isVault ? "Edit Vault Entry" : "Edit Memory"}
             </p>
 
-            <h1 className="font-brand text-3xl font-semibold tracking-[-0.055em] text-[var(--app-text)] sm:text-4xl">
-              {isVault ? "Update your private entry." : "Update this memory."}
+            <h1 className="mt-0 font-brand text-[1.65rem] font-semibold leading-tight text-[var(--app-text)] sm:mt-2 sm:text-4xl lg:text-3xl">
+              {isVault ? "Edit Vault Entry" : "Edit Memory"}
             </h1>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <InfoPill
-              label={isVault ? "Privacy" : "Date"}
-              value={isVault ? "Only you" : formatDateLabel(entryDate)}
-            />
-            <InfoPill label="Words" value={wordCount.toString()} />
-            <InfoPill label="Media" value={mediaCount.toString()} />
+          <div className="hidden flex-col gap-3 sm:flex lg:items-end">
+            <div className="flex flex-wrap gap-2">
+              <ComposerChip
+                label={isVault ? "Privacy" : "Date"}
+                value={isVault ? "Vault" : formatDateLabel(entryDate)}
+              />
+              <ComposerChip label="Words" value={wordCount.toString()} />
+              <ComposerChip label="Media" value={`${mediaCount}/10`} />
+            </div>
+
+            <div className="flex gap-2">
+              <Link
+                href={backHref}
+                className="inline-flex h-11 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-5 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
+              >
+                Cancel
+              </Link>
+
+              <Button
+                type="submit"
+                disabled={pending || uploading || vaultNeedsUnlock}
+                className="h-11 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white shadow-[0_16px_38px_rgba(99,102,241,0.24)] hover:bg-[var(--app-accent-hover)]"
+              >
+                {pending ? "Updating..." : isVault ? "Update Vault" : "Update Memory"}
+                {!pending && <ArrowRight size={17} />}
+              </Button>
+            </div>
           </div>
         </div>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <section className="mem-card rounded-[2rem] p-5 sm:p-6">
-          <form action={formAction} className="space-y-6">
-            <input type="hidden" name="mode" value={mode} />
-            <input type="hidden" name="memoryId" value={memory.id} />
-            <input
-              type="hidden"
-              name="moods"
-              value={JSON.stringify(selectedMoods)}
-            />
-            <input
-              type="hidden"
-              name="entryTimezone"
-              value={memory.entryTimezone || "Asia/Kolkata"}
-            />
-            <input
-              type="hidden"
-              name="existingMediaAssetIds"
-              value={JSON.stringify(existingMedia.map((asset) => asset.assetId))}
-            />
-            <input
-              type="hidden"
-              name="mediaAssetIds"
-              value={JSON.stringify(
-                uploadedAssets.map((asset) => asset.assetId)
-              )}
-            />
+      <div className="grid gap-3 sm:gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[minmax(0,1fr)_440px]">
+        <section className="min-w-0 lg:min-h-0">
+          <div className="mem-card flex h-full min-h-0 flex-col overflow-hidden rounded-[1.2rem] sm:rounded-[2rem]">
+            <div className="flex items-center justify-between gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface)] p-3 sm:gap-3 sm:p-4 lg:shrink-0">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--app-muted)] sm:text-xs sm:tracking-[0.16em]">
+                  {isVault ? "Vault privacy" : "Diary date"}
+                </p>
+                <p className="mt-1 hidden text-sm text-[var(--app-muted)] sm:block">
+                  {isVault ? "Visible only to you." : "Use the real date this memory belongs to."}
+                </p>
+              </div>
 
-            <div className="mem-card-strong rounded-[1.7rem] p-4 sm:p-5">
-              <label className="mb-2 flex items-center gap-2 text-sm font-medium text-[var(--app-text)]">
-                <CalendarDays size={16} />
-                Entry date
-              </label>
-              <input
-                type="date"
-                name="entryDate"
-                value={entryDate}
-                required
-                onChange={(event) => setEntryDate(event.target.value)}
-                className="h-12 w-full rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 text-sm font-semibold text-[var(--app-text)] outline-none transition focus:border-[var(--app-accent)]"
-              />
+              {!isVault && (
+                <div className="flex shrink-0 items-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-3 py-1.5 sm:py-2">
+                  <CalendarDays size={16} className="text-[var(--app-accent)]" />
+                  <input
+                    type="date"
+                    name="entryDate"
+                    value={entryDate}
+                    required
+                    onChange={(event) => setEntryDate(event.target.value)}
+                    className="h-9 min-w-0 bg-transparent text-sm font-semibold text-[var(--app-text)] outline-none"
+                  />
+                </div>
+              )}
+
+              {isVault && <input type="hidden" name="entryDate" value={entryDate} />}
               <FieldError message={state.errors?.entryDate?.[0]} />
             </div>
 
-            <div className="mem-card-strong rounded-[1.7rem] p-4 sm:p-5">
-              <label className="mb-3 block text-sm font-semibold text-[var(--app-text)]">
-                {isVault ? "Vault title" : "Memory title"}
-              </label>
+            <div className="flex min-h-0 flex-1 flex-col p-3.5 sm:p-6 lg:overflow-hidden">
               <input
                 name="title"
                 value={title}
@@ -316,15 +355,12 @@ export function EditMemoryScreen({
                     ? "A thought I want to keep..."
                     : "Give this memory a gentle title..."
                 }
-                className="h-14 w-full border-none bg-transparent font-brand text-2xl font-semibold tracking-[-0.04em] text-[var(--app-text)] outline-none placeholder:text-[var(--app-faint)] sm:text-3xl"
+                className="w-full border-none bg-transparent font-brand text-xl font-semibold leading-tight text-[var(--app-text)] outline-none placeholder:text-[var(--app-faint)] sm:text-4xl"
               />
               <FieldError message={state.errors?.title?.[0]} />
-            </div>
 
-            <div className="mem-card-strong rounded-[1.7rem] p-4 sm:p-5">
-              <label className="mb-3 block text-sm font-semibold text-[var(--app-text)]">
-                {isVault ? "Private diary" : "Your memory"}
-              </label>
+              <div className="my-3.5 h-px bg-[var(--app-border)] sm:my-5" />
+
               <textarea
                 name="content"
                 value={content}
@@ -335,60 +371,78 @@ export function EditMemoryScreen({
                     : "Start writing what happened, how it felt, and why you want to remember it..."
                 }
                 rows={12}
-                className="min-h-[320px] w-full resize-none border-none bg-transparent text-[16px] leading-8 text-[var(--app-text)] outline-none placeholder:text-[var(--app-faint)]"
+                className="min-h-[52dvh] w-full flex-1 resize-none border-none bg-transparent text-[15.5px] leading-7 text-[var(--app-text)] outline-none placeholder:text-[var(--app-faint)] sm:min-h-[460px] sm:text-[17px] sm:leading-8 lg:min-h-0"
               />
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--app-border)] pt-4">
-                <p className="text-xs text-[var(--app-muted)]">
-                  {isVault
-                    ? "No likes. No reflections. No public sharing."
-                    : "Changes will update calendar, timeline, and profile views."}
-                </p>
-                <p className="text-xs font-medium text-[var(--app-muted)]">
-                  {wordCount} words
-                </p>
-              </div>
               <FieldError message={state.errors?.content?.[0]} />
             </div>
 
-            <div className="grid gap-5 lg:grid-cols-2">
-              <div className="mem-card-strong rounded-[1.7rem] p-4">
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 text-xs text-[var(--app-muted)] sm:justify-between sm:px-6 lg:shrink-0">
+              <span className="hidden sm:inline">
+                {isVault ? "Private writing stays in Vault." : "Calendar and profile views update after save."}
+              </span>
+              <span className="font-semibold">{wordCount} words</span>
+            </div>
+          </div>
+        </section>
+
+        <aside className="min-w-0 lg:min-h-0">
+          <div className="space-y-3 sm:space-y-4 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+            <div className="hidden items-center justify-between rounded-[1.35rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-3 lg:flex">
+              <div>
+                <h2 className="font-brand text-lg font-semibold text-[var(--app-text)]">
+                  {isVault ? "Vault details" : "Memory details"}
+                </h2>
+                <p className="text-xs text-[var(--app-muted)]">
+                  Update only what changed.
+                </p>
+              </div>
+              <span className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
+                {mediaCount}/10 media
+              </span>
+            </div>
+
+            <SidePanelSection
+              icon={<Sparkles size={17} />}
+              title="Mood"
+              description="Choose the feeling for this entry."
+              defaultOpen
+            >
                 <MoodSelector
                   moods={moodOptions}
                   selectedMoods={selectedMoods}
                   onChange={setSelectedMoods}
                 />
                 <FieldError message={state.errors?.moods?.[0]} />
-              </div>
+            </SidePanelSection>
 
-              <div className="mem-card-strong rounded-[1.7rem] p-4">
-                <label className="mb-3 block text-sm font-semibold text-[var(--app-text)]">
-                  Privacy
-                </label>
+            <SidePanelSection
+              icon={<LockKeyhole size={17} />}
+              title="Privacy"
+              description={selectedPrivacy?.description ?? "You control visibility."}
+              defaultOpen={!isVault}
+            >
                 <input type="hidden" name="privacy" value={privacy} />
-                <div className="space-y-2">
-                  {MEMORY_PRIVACY_OPTIONS.map((item) => (
+                <div className="rounded-[1.2rem] border border-[var(--app-border)] bg-[var(--app-surface-soft)] p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[var(--app-text)]">
+                        {isVault ? "Vault" : selectedPrivacy?.label ?? "Private"}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
+                        {isVault ? "Only you can see this entry." : selectedPrivacy?.description}
+                      </p>
+                    </div>
+
+                    {!isVault && (
                     <button
-                      key={item.value}
                       type="button"
-                      onClick={() => setPrivacy(item.value)}
-                      className={cn(
-                        "flex w-full items-start gap-3 rounded-[1.1rem] border p-3 text-left transition-all",
-                        privacy === item.value
-                          ? "border-[var(--app-accent)] bg-[var(--app-soft)] text-[var(--app-accent)]"
-                          : "border-[var(--app-border)] bg-[var(--app-surface-soft)] text-[var(--app-muted)] hover:text-[var(--app-text)]"
-                      )}
+                      onClick={() => setPrivacyDialogOpen(true)}
+                      className="shrink-0 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-3 py-2 text-xs font-semibold text-[var(--app-accent)] transition hover:border-[var(--app-accent)]"
                     >
-                      <LockKeyhole size={17} className="mt-0.5 shrink-0" />
-                      <span>
-                        <span className="block text-sm font-semibold">
-                          {item.label}
-                        </span>
-                        <span className="mt-1 block text-xs leading-5 opacity-75">
-                          {item.description}
-                        </span>
-                      </span>
+                      Change
                     </button>
-                  ))}
+                    )}
+                  </div>
                 </div>
 
                 {vaultNeedsUnlock && (
@@ -400,10 +454,8 @@ export function EditMemoryScreen({
                 )}
 
                 <FieldError message={state.errors?.privacy?.[0]} />
-              </div>
-            </div>
+            </SidePanelSection>
 
-            <div className="grid gap-5 lg:grid-cols-2">
               <LocationFields
                 locationName={locationName}
                 latitude={latitude}
@@ -424,7 +476,7 @@ export function EditMemoryScreen({
                 }}
               />
 
-              <TextField
+            <TextField
                 icon={<Tags size={16} />}
                 label="Tags"
                 name="tags"
@@ -432,22 +484,13 @@ export function EditMemoryScreen({
                 placeholder="sunset, peace, family"
                 onChange={setTags}
               />
-            </div>
 
-            <div className="mem-card-strong rounded-[1.7rem] p-4">
-              <div className="mb-4 flex items-center justify-between gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-[var(--app-text)]">
-                    {isVault ? "Private media" : "Photos or videos"}
-                  </label>
-                  <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
-                    Remove existing attachments or add new ones.
-                  </p>
-                </div>
-                <span className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
-                  {mediaCount}/10
-                </span>
-              </div>
+            <SidePanelSection
+              icon={<UploadCloud size={17} />}
+              title={isVault ? "Private media" : "Media"}
+              description="Remove existing attachments or add new ones."
+              action={`${mediaCount}/10`}
+            >
 
               <input
                 ref={fileInputRef}
@@ -462,7 +505,7 @@ export function EditMemoryScreen({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading || mediaCount >= 10}
-                className="flex min-h-[140px] w-full flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[var(--app-border)] bg-[var(--app-surface-soft)] p-6 text-center transition hover:border-[var(--app-accent)] disabled:opacity-60"
+                className="flex min-h-[84px] w-full flex-col items-center justify-center rounded-[1.25rem] border border-dashed border-[var(--app-border)] bg-[var(--app-surface-soft)] p-3 text-center transition hover:border-[var(--app-accent)] disabled:opacity-60 sm:min-h-[112px] sm:rounded-[1.5rem] sm:p-5 lg:min-h-[88px] lg:p-3"
               >
                 {uploading ? (
                   <Loader2 className="mb-3 animate-spin text-[var(--app-accent)]" />
@@ -481,12 +524,12 @@ export function EditMemoryScreen({
                 </p>
               )}
 
-              <p className="mt-3 text-xs leading-5 text-[var(--app-muted)]">
+              <p className="mt-3 hidden text-xs leading-5 text-[var(--app-muted)] sm:block">
                 Large images are optimized before upload. Videos keep their original file and must stay under the upload limit.
               </p>
 
               {(existingMedia.length > 0 || uploadedAssets.length > 0) && (
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
                   {existingMedia.map((asset) => (
                     <MediaPreview
                       key={asset.assetId}
@@ -505,77 +548,41 @@ export function EditMemoryScreen({
               )}
 
               <FieldError message={state.errors?.mediaAssetIds?.[0]} />
-            </div>
+            </SidePanelSection>
 
             {state.message && (
               <div className="rounded-2xl border border-rose-300/40 bg-rose-500/10 p-4 text-sm leading-6 text-rose-500">
                 {state.message}
               </div>
             )}
-
-            <div className="sticky bottom-4 z-20 rounded-[1.5rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-3 shadow-[0_24px_70px_var(--app-shadow)] backdrop-blur-2xl">
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Link
-                  href={backHref}
-                  className="flex h-12 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-5 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)] sm:flex-1"
-                >
-                  Cancel
-                </Link>
-
-                <Button
-                  type="submit"
-                  disabled={pending || uploading || vaultNeedsUnlock}
-                  className="h-12 rounded-2xl bg-[var(--app-accent)] text-[15px] font-semibold text-white shadow-[0_16px_38px_rgba(99,102,241,0.24)] hover:bg-[var(--app-accent-hover)] sm:flex-[1.4]"
-                >
-                  {pending ? "Updating memory..." : "Update Memory"}
-                  {!pending && <ArrowRight size={17} />}
-                </Button>
-              </div>
-            </div>
-          </form>
-        </section>
-
-        <aside className="space-y-5">
-          <div className="sticky top-4 space-y-5">
-            <div className="mem-card rounded-[2rem] p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-                  Preview
-                </h2>
-                <span className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
-                  {
-                    MEMORY_PRIVACY_OPTIONS.find(
-                      (item) => item.value === privacy
-                    )?.label
-                  }
-                </span>
-              </div>
-              <div className="rounded-[1.6rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-4">
-                <PreviewMedia
-                  existingMedia={existingMedia}
-                  uploadedAssets={uploadedAssets}
-                />
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {selectedMoods.map((mood) => (
-                    <span
-                      key={mood}
-                      className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-medium text-[var(--app-accent)]"
-                    >
-                      {mood}
-                    </span>
-                  ))}
-                </div>
-                <h3 className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-                  {title || (isVault ? "Untitled Vault entry" : "Untitled memory")}
-                </h3>
-                <p className="mt-2 line-clamp-6 text-sm leading-6 text-[var(--app-muted)]">
-                  {content || "Your updated writing preview will appear here..."}
-                </p>
-              </div>
-            </div>
           </div>
         </aside>
       </div>
+
+      <div className="fixed inset-x-2 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] z-40 rounded-[1.2rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-2 shadow-[0_18px_48px_var(--app-shadow)] backdrop-blur-2xl sm:hidden">
+        <p className="mb-2 px-2 text-center text-[11px] font-semibold text-[var(--app-muted)]">
+          {isVault ? "Vault" : selectedPrivacy?.label ?? "Private"} - {mediaCount}/10 media
+        </p>
+        <Button
+          type="submit"
+          disabled={pending || uploading || vaultNeedsUnlock}
+          className="h-12 w-full rounded-2xl bg-[var(--app-accent)] text-sm font-semibold text-white shadow-[0_16px_38px_rgba(99,102,241,0.24)] hover:bg-[var(--app-accent-hover)]"
+        >
+          {pending ? "Updating..." : isVault ? "Update Vault" : "Update Memory"}
+          {!pending && <ArrowRight size={17} />}
+        </Button>
+      </div>
+
+      <PrivacyVisibilityDialog
+        isOpen={privacyDialogOpen}
+        selectedPrivacy={privacy}
+        onClose={() => setPrivacyDialogOpen(false)}
+        onSelect={(nextPrivacy) => {
+          setPrivacy(nextPrivacy);
+          setPrivacyDialogOpen(false);
+        }}
+      />
+      </form>
     </div>
   );
 }
@@ -612,6 +619,177 @@ function TextField({
   );
 }
 
+function ComposerChip({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-2 rounded-full border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-3 py-1.5 text-xs text-[var(--app-muted)]">
+      <span className="font-semibold uppercase tracking-[0.14em]">
+        {label}
+      </span>
+      <strong className="font-brand text-sm font-semibold text-[var(--app-text)]">
+        {value}
+      </strong>
+    </span>
+  );
+}
+
+function SidePanelSection({
+  icon,
+  title,
+  description,
+  action,
+  defaultOpen = false,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  action?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [mobileOpen, setMobileOpen] = useState(defaultOpen);
+
+  return (
+    <section className="mem-card-strong rounded-[1.35rem] p-3 sm:rounded-[1.7rem] sm:p-4">
+      <button
+        type="button"
+        onClick={() => setMobileOpen((current) => !current)}
+        className="flex w-full items-start justify-between gap-3 text-left md:pointer-events-none"
+        aria-expanded={mobileOpen}
+      >
+        <span className="flex min-w-0 items-start gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)] sm:size-10">
+            {icon}
+          </span>
+          <span className="min-w-0">
+            <span className="block font-brand text-base font-semibold text-[var(--app-text)] sm:text-lg">
+              {title}
+            </span>
+            <span className="mt-1 hidden text-xs leading-5 text-[var(--app-muted)] sm:block">
+              {description}
+            </span>
+          </span>
+        </span>
+
+        <span className="flex shrink-0 items-center gap-2">
+          {action && (
+            <span className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
+              {action}
+            </span>
+          )}
+          <ChevronDown
+            size={18}
+            className={cn(
+              "text-[var(--app-muted)] transition md:hidden",
+              mobileOpen && "rotate-180"
+            )}
+          />
+        </span>
+      </button>
+
+      <div className={cn("mt-4", mobileOpen ? "block" : "hidden md:block")}>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function PrivacyVisibilityDialog({
+  isOpen,
+  selectedPrivacy,
+  onClose,
+  onSelect,
+}: {
+  isOpen: boolean;
+  selectedPrivacy: (typeof MEMORY_PRIVACY_OPTIONS)[number]["value"];
+  onClose: () => void;
+  onSelect: (privacy: (typeof MEMORY_PRIVACY_OPTIONS)[number]["value"]) => void;
+}) {
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-end bg-black/60 p-3 backdrop-blur-sm sm:items-center sm:justify-center sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-privacy-dialog-title"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-[1.6rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-4 shadow-[0_24px_90px_var(--app-shadow)] sm:rounded-[2rem] sm:p-5"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2
+              id="edit-privacy-dialog-title"
+              className="font-brand text-xl font-semibold text-[var(--app-text)]"
+            >
+              Change visibility
+            </h2>
+            <p className="mt-1 text-sm text-[var(--app-muted)]">
+              Choose who can see this memory.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
+            aria-label="Close visibility selector"
+          >
+            X
+          </button>
+        </div>
+
+        <div className="max-h-[58vh] space-y-2 overflow-y-auto pr-1 sm:max-h-[64vh]">
+          {MEMORY_PRIVACY_OPTIONS.map((item) => {
+            const selected = selectedPrivacy === item.value;
+
+            return (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => onSelect(item.value)}
+                className={cn(
+                  "flex w-full items-start gap-3 rounded-[1.15rem] border p-3 text-left transition",
+                  selected
+                    ? "border-[var(--app-accent)] bg-[var(--app-soft)] text-[var(--app-accent)]"
+                    : "border-[var(--app-border)] bg-[var(--app-surface-soft)] text-[var(--app-muted)] hover:text-[var(--app-text)]"
+                )}
+              >
+                <LockKeyhole size={17} className="mt-0.5 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">
+                    {item.label}
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 opacity-80">
+                    {item.description}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MediaPreview({
   asset,
   onRemove,
@@ -623,15 +801,15 @@ function MediaPreview({
   const isImage = asset.mimeType.startsWith("image/");
 
   return (
-    <div className="group relative overflow-hidden rounded-[1.3rem] border border-[var(--app-border)] bg-[var(--app-surface-soft)]">
+    <div className="group relative h-24 w-28 shrink-0 overflow-hidden rounded-[1.1rem] border border-[var(--app-border)] bg-[var(--app-surface-soft)]">
       {isImage ? (
         <img
           src={url}
           alt={asset.fileName}
-          className="h-36 w-full object-cover"
+          className="h-full w-full object-cover"
         />
       ) : (
-        <video src={url} className="h-36 w-full object-cover" muted controls />
+        <video src={url} className="h-full w-full object-cover" muted controls />
       )}
       <button
         type="button"
@@ -641,58 +819,6 @@ function MediaPreview({
       >
         <Trash2 size={15} />
       </button>
-    </div>
-  );
-}
-
-function PreviewMedia({
-  existingMedia,
-  uploadedAssets,
-}: {
-  existingMedia: EditableMemoryMedia[];
-  uploadedAssets: UploadedAsset[];
-}) {
-  const asset = uploadedAssets[0] ?? existingMedia[0];
-
-  if (!asset) {
-    return (
-      <div className="mb-4 flex h-60 items-center justify-center rounded-[1.3rem] [background:var(--vault-hero)]">
-        <ImagePlus className="text-[var(--app-accent)]" />
-      </div>
-    );
-  }
-
-  const url = getMediaUrl(asset);
-
-  if (asset.mimeType.startsWith("image/")) {
-    return (
-      <img
-        src={url}
-        alt="Preview"
-        className="mb-4 h-60 w-full rounded-[1.3rem] object-cover"
-      />
-    );
-  }
-
-  return (
-    <video
-      src={url}
-      className="mb-4 h-60 w-full rounded-[1.3rem] object-cover"
-      muted
-      controls
-    />
-  );
-}
-
-function InfoPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[1.2rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 py-3 shadow-sm">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
-        {label}
-      </p>
-      <p className="mt-1 font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-        {value}
-      </p>
     </div>
   );
 }

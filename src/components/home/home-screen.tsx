@@ -10,7 +10,6 @@ import {
   Plus,
   LockKeyhole,
 } from "lucide-react";
-import { HomeMomentsRealtimeRefresh } from "@/components/home/home-moments-realtime-refresh";
 import { DeleteMemoryButton } from "@/components/memory/delete-memory-button";
 import { MemoryEngagementBar } from "@/components/memory/memory-engagement-bar";
 import {
@@ -42,8 +41,6 @@ export function HomeScreen({
 }: HomeScreenProps) {
   return (
     <div className="mx-auto grid w-full max-w-[1500px] gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <HomeMomentsRealtimeRefresh />
-
       <div className="min-w-0 space-y-4">
         <MomentsTray
           activeMoments={activeMoments}

@@ -8,6 +8,10 @@ import { getAuthenticatedAppUser } from "@/lib/auth/get-authenticated-app-user";
 import { cacheTags } from "@/lib/cache-tags";
 import { getDiaryDashboardData } from "@/lib/diary/get-diary-dashboard-data";
 
+export const unstable_instant = {
+  prefetch: "static",
+};
+
 export default function DashboardPage() {
   return (
     <Suspense fallback={<AppContentLoading />}>

@@ -9,6 +9,10 @@ import { cacheTags } from "@/lib/cache-tags";
 import { getHomeFeed } from "@/lib/memories/get-home-feed";
 import { getActiveMoments } from "@/lib/moments/get-active-moments";
 
+export const unstable_instant = {
+  prefetch: "static",
+};
+
 export default function HomePage() {
   return (
     <Suspense fallback={<AppContentLoading />}>

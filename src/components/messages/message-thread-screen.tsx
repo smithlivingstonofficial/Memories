@@ -15,14 +15,14 @@ export function MessageThreadScreen({
   currentUserId,
 }: MessageThreadScreenProps) {
   return (
-    <div className="mx-auto flex h-[calc(100vh-7rem)] w-full max-w-[1040px] flex-col overflow-hidden rounded-[2rem] border border-[var(--app-border)] bg-[var(--app-surface)] shadow-[0_24px_80px_var(--app-shadow)] backdrop-blur-2xl">
+    <div className="-mx-3 flex h-[calc(100dvh-6.5rem)] w-[calc(100%+1.5rem)] max-w-[1120px] flex-col overflow-hidden rounded-[1.35rem] border border-[var(--app-border)] bg-[var(--app-surface)] shadow-[0_24px_80px_var(--app-shadow)] backdrop-blur-2xl sm:mx-auto sm:h-[calc(100dvh-8rem)] sm:w-full sm:rounded-[2rem]">
       <MarkConversationRead conversationId={data.conversationId} />
 
-      <header className="shrink-0 border-b border-[var(--app-border)] bg-[var(--app-surface-strong)]/85 px-4 py-3 backdrop-blur-2xl sm:px-5">
-        <div className="flex items-center gap-4">
+      <header className="shrink-0 border-b border-[var(--app-border)] bg-[var(--app-surface-strong)]/90 px-3 py-2.5 backdrop-blur-2xl sm:px-5 sm:py-3">
+        <div className="flex items-center gap-3">
           <Link
             href="/messages"
-            className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-muted)] transition hover:text-[var(--app-text)] sm:size-11 sm:rounded-2xl"
             aria-label="Back to messages"
           >
             <ArrowLeft size={18} />
@@ -38,11 +38,11 @@ export function MessageThreadScreen({
             />
 
             <div className="min-w-0">
-              <h1 className="font-brand truncate text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)] sm:text-xl">
+              <h1 className="truncate text-base font-semibold text-[var(--app-text)] sm:font-brand sm:text-xl sm:tracking-[-0.04em]">
                 {data.otherUser.fullName}
               </h1>
 
-              <p className="truncate text-sm text-[var(--app-muted)]">
+              <p className="truncate text-xs text-[var(--app-muted)] sm:text-sm">
                 @{data.otherUser.username}
               </p>
             </div>
@@ -50,21 +50,20 @@ export function MessageThreadScreen({
         </div>
       </header>
 
-      <main className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_10%_0%,rgba(99,102,241,0.09),transparent_30%),radial-gradient(circle_at_100%_100%,rgba(99,102,241,0.12),transparent_30%)] p-4 sm:p-5">
-        {data.messages.length === 0 ? (
-          <EmptyChat otherUserName={data.otherUser.fullName} />
-        ) : (
-          <RealtimeMessageList
-            conversationId={data.conversationId}
-            currentUserId={currentUserId}
-            otherUser={data.otherUser}
-            initialMessages={data.messages}
-          />
-        )}
+      <main className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_10%_0%,rgba(99,102,241,0.09),transparent_30%),radial-gradient(circle_at_100%_100%,rgba(99,102,241,0.12),transparent_30%)] px-3 py-4 sm:p-5">
+        <RealtimeMessageList
+          conversationId={data.conversationId}
+          currentUserId={currentUserId}
+          otherUser={data.otherUser}
+          initialMessages={data.messages}
+        />
       </main>
 
-      <footer className="shrink-0 border-t border-[var(--app-border)] bg-[var(--app-surface-strong)]/90 p-3 backdrop-blur-2xl sm:p-4">
-        <MessageComposer conversationId={data.conversationId} />
+      <footer className="shrink-0 border-t border-[var(--app-border)] bg-[var(--app-surface-strong)]/90 p-2.5 backdrop-blur-2xl sm:p-3">
+        <MessageComposer
+          conversationId={data.conversationId}
+          currentUserId={currentUserId}
+        />
       </footer>
     </div>
   );
@@ -91,34 +90,14 @@ function Avatar({
       <img
         src={avatarUrl}
         alt={fullName}
-        className="size-12 shrink-0 rounded-2xl object-cover"
+        className="size-10 shrink-0 rounded-full object-cover sm:size-12"
       />
     );
   }
 
   return (
-    <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-soft)] font-brand font-semibold text-[var(--app-accent)]">
+    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--app-soft)] font-brand font-semibold text-[var(--app-accent)] sm:size-12">
       {initials}
-    </div>
-  );
-}
-
-function EmptyChat({ otherUserName }: { otherUserName: string }) {
-  return (
-    <div className="flex min-h-full items-center justify-center px-4 py-10">
-      <div className="max-w-sm rounded-[2rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-6 text-center shadow-[0_20px_70px_var(--app-shadow)]">
-        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-[1.4rem] bg-[var(--app-soft)] font-brand text-xl font-semibold text-[var(--app-accent)]">
-          {otherUserName[0] ?? "M"}
-        </div>
-
-        <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-          Start chatting
-        </h2>
-
-        <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
-          Send your first message to {otherUserName}.
-        </p>
-      </div>
     </div>
   );
 }

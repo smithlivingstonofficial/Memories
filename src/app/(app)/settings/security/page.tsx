@@ -1,7 +1,15 @@
+import { Suspense } from "react";
+import { cacheLife, cacheTag } from "next/cache";
 import { AppLayout } from "@/components/layout/app-layout";
+import { AppContentLoading } from "@/components/layout/app-content-loading";
 import { SecuritySettingsScreen } from "@/components/settings/security-settings-screen";
 import { getAccountPasswordVerificationState } from "@/app/actions/security";
 import { getAuthenticatedAppUser } from "@/lib/auth/get-authenticated-app-user";
+import { cacheTags } from "@/lib/cache-tags";
+
+export const unstable_instant = {
+  prefetch: "static",
+};
 
 type SecuritySettingsPageProps = {
   searchParams?: Promise<{
@@ -10,11 +18,25 @@ type SecuritySettingsPageProps = {
   }>;
 };
 
-export default async function SecuritySettingsPage({
+export default function SecuritySettingsPage({
   searchParams,
 }: SecuritySettingsPageProps) {
+  return (
+    <Suspense fallback={<AppContentLoading />}>
+      <SecuritySettingsContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function SecuritySettingsContent({
+  searchParams,
+}: SecuritySettingsPageProps) {
+  "use cache: private";
+  cacheLife({ stale: 30, revalidate: 60, expire: 180 });
+
   const params = await searchParams;
   const appUser = await getAuthenticatedAppUser();
+  cacheTag(cacheTags.userProfile(appUser.id));
   const verification = await getAccountPasswordVerificationState(appUser.id);
 
   return (

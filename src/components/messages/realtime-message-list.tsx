@@ -4,19 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { markConversationReadAction } from "@/app/actions/messages";
 import { createClient } from "@/lib/supabase/client";
 import type { MessageThreadItem } from "@/lib/messages/get-messages-data";
+import type { OptimisticMessageEvent } from "@/components/messages/message-composer";
 
 type RealtimeMessageRow = {
   id: string;
-  conversation_id: string;
-  sender_id: string;
+  conversationId: string;
+  senderId: string;
   body: string;
-  created_at: string;
+  createdAt: string;
 };
 
-type RealtimeMemberRow = {
-  conversation_id: string;
-  user_id: string;
-  last_read_at: string | null;
+type RealtimeReadReceipt = {
+  conversationId: string;
+  userId: string;
+  lastReadAt: string | null;
 };
 
 type RealtimeMessageListProps = {
@@ -59,21 +60,80 @@ export function RealtimeMessageList({
   }, [messages.length]);
 
   useEffect(() => {
-    const supabase = createClient();
+    function handleOptimisticMessage(event: Event) {
+      const messageEvent = event as CustomEvent<OptimisticMessageEvent>;
+      const row = messageEvent.detail;
 
-    const channel = supabase
-      .channel(`messages:${conversationId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          const row = payload.new as RealtimeMessageRow;
-          const isOwn = row.sender_id === currentUserId;
+      if (row.conversationId !== conversationId) return;
+
+      setMessages((currentMessages) => {
+        const alreadyExists = currentMessages.some(
+          (message) => message.id === row.id
+        );
+
+        if (alreadyExists) return currentMessages;
+
+        return [
+          ...currentMessages,
+          {
+            id: row.id,
+            body: row.body,
+            createdAt: row.createdAt,
+            isOwn: true,
+            readStatus: "sent",
+            sender: {
+              id: currentUserId,
+              username: "you",
+              fullName: "You",
+              avatarUrl: null,
+            },
+          },
+        ];
+      });
+    }
+
+    function handleFailedMessage(event: Event) {
+      const failedEvent = event as CustomEvent<{ id: string }>;
+
+      setMessages((currentMessages) =>
+        currentMessages.filter((message) => message.id !== failedEvent.detail.id)
+      );
+    }
+
+    window.addEventListener("memories:message-sent", handleOptimisticMessage);
+    window.addEventListener("memories:message-failed", handleFailedMessage);
+
+    return () => {
+      window.removeEventListener(
+        "memories:message-sent",
+        handleOptimisticMessage
+      );
+      window.removeEventListener(
+        "memories:message-failed",
+        handleFailedMessage
+      );
+    };
+  }, [conversationId, currentUserId]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+
+    async function subscribeToConversation() {
+      await supabase.realtime.setAuth();
+
+      if (cancelled) return;
+
+      channel = supabase
+        .channel(`conversation:${conversationId}`, {
+          config: {
+            private: true,
+          },
+        })
+        .on("broadcast", { event: "message.created" }, (payload) => {
+          const row = payload.payload as RealtimeMessageRow;
+          const isOwn = row.senderId === currentUserId;
 
           setMessages((currentMessages) => {
             const alreadyExists = currentMessages.some(
@@ -87,7 +147,7 @@ export function RealtimeMessageList({
             const nextMessage: MessageThreadItem = {
               id: row.id,
               body: row.body,
-              createdAt: row.created_at,
+              createdAt: row.createdAt,
               isOwn,
               readStatus: isOwn ? "sent" : null,
               sender: isOwn
@@ -106,22 +166,19 @@ export function RealtimeMessageList({
           if (!isOwn) {
             void markConversationReadAction(conversationId);
           }
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "conversation_members",
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          const row = payload.new as RealtimeMemberRow;
+        })
+        .on("broadcast", { event: "message.read" }, (payload) => {
+          const row = payload.payload as RealtimeReadReceipt;
 
-          if (row.user_id !== otherUser.id || !row.last_read_at) return;
+          if (
+            row.conversationId !== conversationId ||
+            row.userId !== otherUser.id ||
+            !row.lastReadAt
+          ) {
+            return;
+          }
 
-          const lastReadTime = new Date(row.last_read_at).getTime();
+          const lastReadTime = new Date(row.lastReadAt).getTime();
 
           setMessages((currentMessages) =>
             currentMessages.map((message) => {
@@ -129,34 +186,41 @@ export function RealtimeMessageList({
 
               const messageTime = new Date(message.createdAt).getTime();
 
-              if (messageTime <= lastReadTime) {
-                return {
-                  ...message,
-                  readStatus: "seen",
-                };
-              }
+              if (messageTime > lastReadTime) return message;
 
-              return message;
+              return {
+                ...message,
+                readStatus: "seen",
+              };
             })
           );
-        }
-      )
-      .subscribe();
+        })
+        .subscribe();
+    }
+
+    void subscribeToConversation();
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [conversationId, currentUserId, otherUser]);
 
   if (messages.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-center">
+      <div className="flex min-h-full items-center justify-center px-4 py-10 text-center">
         <div>
+          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-[var(--app-soft)] font-brand text-xl font-semibold text-[var(--app-accent)]">
+            {otherUser.fullName[0] ?? "M"}
+          </div>
           <h2 className="font-brand text-2xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
             Start the conversation
           </h2>
           <p className="mt-2 text-sm text-[var(--app-muted)]">
-            Send a private message below.
+            Send a private message to {otherUser.fullName}.
           </p>
         </div>
       </div>
@@ -164,7 +228,7 @@ export function RealtimeMessageList({
   }
 
   return (
-    <>
+    <div className="space-y-2">
       {messages.map((message) => (
         <div
           key={message.id}
@@ -173,8 +237,8 @@ export function RealtimeMessageList({
           <div
             className={
               message.isOwn
-                ? "max-w-[78%] rounded-[1.4rem] bg-[var(--app-accent)] px-4 py-3 text-sm leading-6 text-white shadow-[0_12px_32px_rgba(99,102,241,0.22)]"
-                : "max-w-[78%] rounded-[1.4rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 py-3 text-sm leading-6 text-[var(--app-text)]"
+                ? "max-w-[82%] rounded-[1.25rem] rounded-br-md bg-[var(--app-accent)] px-3.5 py-2.5 text-sm leading-6 text-white shadow-[0_12px_32px_rgba(99,102,241,0.22)] sm:max-w-[72%]"
+                : "max-w-[82%] rounded-[1.25rem] rounded-bl-md border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-3.5 py-2.5 text-sm leading-6 text-[var(--app-text)] sm:max-w-[72%]"
             }
           >
             <p className="whitespace-pre-wrap">{message.body}</p>
@@ -195,7 +259,7 @@ export function RealtimeMessageList({
       ))}
 
       <div ref={bottomRef} />
-    </>
+    </div>
   );
 }
 
