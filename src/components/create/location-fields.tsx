@@ -103,7 +103,7 @@ export function LocationFields({
   }
 
   return (
-    <div className="mem-card-strong rounded-[1.7rem] p-4">
+    <div className="mem-card-strong rounded-[1.35rem] p-3 sm:rounded-[1.7rem] sm:p-4 lg:p-3">
       <input type="hidden" name="locationLabel" value={locationName} />
       <input type="hidden" name="latitude" value={latitude ?? ""} />
       <input type="hidden" name="longitude" value={longitude ?? ""} />
@@ -129,13 +129,13 @@ export function LocationFields({
         value={locationName}
         onChange={(event) => onLocationNameChange(event.target.value)}
         placeholder={placeholder}
-        className="mem-input h-12 w-full rounded-2xl px-4 text-[15px] outline-none transition-all placeholder:text-[var(--app-faint)] focus:border-[var(--app-accent)]"
+        className="mem-input h-12 w-full rounded-2xl px-4 text-[15px] outline-none transition-all placeholder:text-[var(--app-faint)] focus:border-[var(--app-accent)] lg:h-11"
       />
 
       <button
         type="button"
         onClick={useCurrentLocation}
-        className="mt-3 inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 text-xs font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-accent)]"
+        className="mt-3 inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 text-xs font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-accent)] lg:h-9"
       >
         Use current location
       </button>

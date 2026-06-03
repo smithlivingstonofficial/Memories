@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu as MenuIcon } from "lucide-react";
+import { Menu as MenuIcon, Plus } from "lucide-react";
 import { mobilePrimaryNavItems } from "@/components/layout/navigation-config";
 import { isActiveRoute } from "@/components/layout/route-utils";
 import { cn } from "@/lib/utils";
@@ -29,11 +29,11 @@ export function MobileBottomNav({
             <Link
               key={item.href}
               href={item.href}
-              className="mx-1 -mt-8 flex size-[60px] shrink-0 items-center justify-center rounded-2xl bg-[var(--app-accent)] text-white shadow-[0_18px_38px_rgba(99,102,241,0.35)] transition active:scale-95"
+              className="mx-1 -mt-8 flex size-16 shrink-0 items-center justify-center rounded-full bg-[var(--app-accent)] text-white shadow-[0_18px_38px_rgba(99,102,241,0.35)] transition active:scale-95"
               aria-label="Create"
               aria-current={active ? "page" : undefined}
             >
-              <Icon size={23} />
+              <Plus size={28} strokeWidth={2.4} />
             </Link>
           );
         }
