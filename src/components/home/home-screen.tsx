@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   CalendarDays,
   ImagePlus,
@@ -9,7 +9,9 @@ import {
   PenLine,
   Plus,
   LockKeyhole,
+  Sparkles,
 } from "lucide-react";
+import { deleteContentDraftAction } from "@/app/actions/drafts";
 import { DeleteMemoryButton } from "@/components/memory/delete-memory-button";
 import { MemoryEngagementBar } from "@/components/memory/memory-engagement-bar";
 import {
@@ -18,10 +20,12 @@ import {
 } from "@/lib/quick-memory-draft";
 import type { FeedMemory } from "@/types/memory";
 import type { ActiveMoment } from "@/types/moment";
+import type { HomeDraft } from "@/types/draft";
 
 type HomeScreenProps = {
   memories: FeedMemory[];
   activeMoments: ActiveMoment[];
+  drafts: HomeDraft[];
   currentUserId: string;
 };
 
@@ -37,17 +41,53 @@ type MomentGroup = {
 export function HomeScreen({
   memories,
   activeMoments,
+  drafts,
   currentUserId,
 }: HomeScreenProps) {
+  const todayLabel = new Date().toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+
   return (
-    <div className="mx-auto grid w-full max-w-[1500px] gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="min-w-0 space-y-4">
+    <div className="mx-auto grid w-full max-w-[1500px] gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="min-w-0 space-y-3 sm:space-y-4">
+        <section className="mem-card rounded-[1.35rem] p-4 sm:rounded-[2rem] sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <span className="mb-2 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
+                <Sparkles size={14} />
+                {todayLabel}
+              </span>
+
+              <h1 className="font-brand text-3xl font-semibold leading-tight text-[var(--app-text)] sm:text-4xl">
+                Home
+              </h1>
+
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--app-muted)]">
+                Your active moments, quick draft, and latest shared memories.
+              </p>
+            </div>
+
+            <Link
+              href="/create"
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(99,102,241,0.25)] transition hover:bg-[var(--app-accent-hover)]"
+            >
+              Create
+              <Plus size={17} />
+            </Link>
+          </div>
+        </section>
+
         <MomentsTray
           activeMoments={activeMoments}
           currentUserId={currentUserId}
         />
 
         <QuickMemoryCapture currentUserId={currentUserId} />
+
+        <DraftsStrip drafts={drafts} />
 
         {memories.length === 0 ? (
           <EmptyFeed />
@@ -126,10 +166,10 @@ function QuickMemoryCapture({ currentUserId }: { currentUserId: string }) {
   }
 
   return (
-    <section className="mem-card rounded-[1.6rem] p-4 shadow-[0_18px_60px_var(--app-shadow)]">
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <section className="mem-card overflow-hidden rounded-[1.35rem] shadow-[0_18px_60px_var(--app-shadow)] sm:rounded-[2rem]">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--app-border)] bg-[var(--app-surface-strong)]/55 p-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-[1.1rem] bg-[var(--app-soft)] text-[var(--app-accent)]">
             <PenLine size={18} />
           </div>
 
@@ -153,20 +193,22 @@ function QuickMemoryCapture({ currentUserId }: { currentUserId: string }) {
         </Link>
       </div>
 
-      <input
-        value={title}
-        onChange={(event) => handleTitleChange(event.target.value)}
-        placeholder="Title"
-        className="mb-2 h-11 w-full rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 font-brand text-lg font-semibold tracking-[-0.035em] text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-faint)] focus:border-[var(--app-accent)]"
-      />
+      <div className="p-4">
+        <input
+          value={title}
+          onChange={(event) => handleTitleChange(event.target.value)}
+          placeholder="Title"
+          className="mb-2 h-11 w-full rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 font-brand text-lg font-semibold tracking-[-0.035em] text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-faint)] focus:border-[var(--app-accent)]"
+        />
 
-      <textarea
-        value={content}
-        onChange={(event) => handleContentChange(event.target.value)}
-        placeholder="Write a quick draft..."
-        rows={3}
-        className="min-h-[92px] w-full resize-none rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 py-3 text-[15px] leading-6 text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-faint)] focus:border-[var(--app-accent)]"
-      />
+        <textarea
+          value={content}
+          onChange={(event) => handleContentChange(event.target.value)}
+          placeholder="Write a quick draft..."
+          rows={3}
+          className="min-h-[96px] w-full resize-none rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 py-3 text-[15px] leading-6 text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-faint)] focus:border-[var(--app-accent)]"
+        />
+      </div>
     </section>
   );
 }
@@ -192,9 +234,117 @@ function readDraft(key: string): QuickMemoryDraft {
   }
 }
 
+function DraftsStrip({ drafts }: { drafts: HomeDraft[] }) {
+  const [visibleDrafts, setVisibleDrafts] = useState(drafts);
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setVisibleDrafts(drafts);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [drafts]);
+
+  if (visibleDrafts.length === 0) return null;
+
+  function deleteDraft(draftId: string) {
+    setVisibleDrafts((current) =>
+      current.filter((draft) => draft.id !== draftId)
+    );
+
+    startTransition(async () => {
+      const result = await deleteContentDraftAction(draftId);
+
+      if (!result.success) {
+        setVisibleDrafts(drafts);
+      }
+    });
+  }
+
+  return (
+    <section className="mem-card overflow-hidden rounded-[1.35rem] sm:rounded-[2rem]">
+      <div className="flex items-center justify-between border-b border-[var(--app-border)] px-4 py-3">
+        <div>
+          <h2 className="text-sm font-semibold text-[var(--app-text)]">
+            Drafts
+          </h2>
+          <p className="text-xs text-[var(--app-muted)]">
+            Pick up unfinished work.
+          </p>
+        </div>
+        <span className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
+          {visibleDrafts.length}
+        </span>
+      </div>
+
+      <div className="no-scrollbar flex gap-3 overflow-x-auto p-3 sm:p-4">
+        {visibleDrafts.map((draft) => (
+          <article
+            key={draft.id}
+            className="min-w-[230px] rounded-[1.2rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-3 sm:min-w-[280px]"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className="rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
+                {formatDraftType(draft.draftType)}
+              </span>
+              <span className="text-xs text-[var(--app-muted)]">
+                {formatDraftTime(draft.updatedAt)}
+              </span>
+            </div>
+
+            <h3 className="line-clamp-1 font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+              {getDraftTitle(draft)}
+            </h3>
+
+            <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-[var(--app-muted)]">
+              {draft.content || draft.caption || "No text yet."}
+            </p>
+
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-[var(--app-muted)]">
+                {draft.mediaCount}/10 media
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => deleteDraft(draft.id)}
+                  className="rounded-xl border border-[var(--app-border)] px-3 py-2 text-xs font-semibold text-[var(--app-muted)] transition hover:text-rose-500 disabled:opacity-60"
+                >
+                  Delete
+                </button>
+                <Link
+                  href={getDraftResumeHref(draft)}
+                  className="rounded-xl bg-[var(--app-accent)] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[var(--app-accent-hover)]"
+                >
+                  Resume
+                </Link>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function DesktopSideArea() {
   return (
     <>
+      <div className="mem-card rounded-[2rem] p-5">
+        <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
+          <PenLine size={14} />
+          Today prompt
+        </p>
+
+        <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+          What small moment should future you remember?
+        </h2>
+      </div>
+
       <Link
         href="/calendar"
         className="mem-card flex items-center justify-between rounded-[1.6rem] p-4 transition hover:border-[var(--app-accent)]"
@@ -240,8 +390,14 @@ function MomentsTray({
   const otherGroups = groupedMoments.filter((group) => !group.isCurrentUser);
 
   return (
-    <section className="mem-card overflow-hidden rounded-[1.6rem]">
-      <div className="p-4">
+    <section className="mem-card overflow-hidden rounded-[1.35rem] sm:rounded-[2rem]">
+      <div className="border-b border-[var(--app-border)] px-4 py-3">
+        <h2 className="text-sm font-semibold text-[var(--app-text)]">
+          Moments
+        </h2>
+      </div>
+
+      <div className="p-3 sm:p-4">
         <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
           <YourMomentCard group={myGroup} />
 
@@ -463,7 +619,7 @@ function MemoryCard({
   const firstMedia = memory.media[0];
 
   return (
-    <article className="mem-card overflow-hidden rounded-[1.6rem]">
+    <article className="mem-card overflow-hidden rounded-[1.35rem] sm:rounded-[2rem]">
       <div className="p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <Link
@@ -474,7 +630,7 @@ function MemoryCard({
 
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-[var(--app-text)] transition hover:text-[var(--app-accent)]">
-                {memory.author.fullName} {" • "} {formatDate(memory.createdAt)}
+                {memory.author.fullName} {" - "} {formatMemoryDate(memory)}
               </p>
               <p className="truncate text-xs text-[var(--app-muted)]">
                 @{memory.author.username} 
@@ -540,7 +696,7 @@ function MemoryCard({
         </div>
 
         <Link href={`/memory/${memory.id}`}>
-          <h3 className="font-brand mb-1 text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)] transition hover:text-[var(--app-accent)]">
+          <h3 className="font-brand mb-1 text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)] transition hover:text-[var(--app-accent)]">
             {memory.title || "Untitled memory"}
           </h3>
         </Link>
@@ -600,7 +756,21 @@ function EmptyFeed() {
   );
 }
 
+function formatMemoryDate(memory: FeedMemory) {
+  return formatDate(memory.entryDate ?? memory.createdAt);
+}
+
 function formatDate(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+
+    return date.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+    });
+  }
+
   const date = new Date(value);
 
   return date.toLocaleDateString("en-IN", {
@@ -619,4 +789,42 @@ function formatPrivacy(value: FeedMemory["privacy"]) {
   };
 
   return labels[value];
+}
+
+function formatDraftType(value: HomeDraft["draftType"]) {
+  if (value === "vault") return "Vault";
+  if (value === "moment") return "Moment";
+  return "Memory";
+}
+
+function getDraftTitle(draft: HomeDraft) {
+  return (
+    draft.title ||
+    draft.caption ||
+    (draft.draftType === "moment" ? "Untitled Moment" : "Untitled draft")
+  );
+}
+
+function getDraftResumeHref(draft: HomeDraft) {
+  if (draft.draftType === "vault") return `/create/vault?draftId=${draft.id}`;
+  if (draft.draftType === "moment") return `/create/moment?draftId=${draft.id}`;
+  return `/create/memory?draftId=${draft.id}`;
+}
+
+function formatDraftTime(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+  const sameDay = date.toDateString() === now.toDateString();
+
+  if (sameDay) {
+    return date.toLocaleTimeString("en-IN", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+  });
 }

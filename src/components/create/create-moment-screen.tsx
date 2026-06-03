@@ -31,13 +31,20 @@ import {
 } from "@/lib/media/client-media-processing";
 import { MEMORY_MOODS } from "@/lib/moods";
 import { cn } from "@/lib/utils";
+import {
+  formatAutosaveStatus,
+  useContentDraftAutosave,
+} from "@/hooks/use-content-draft-autosave";
+import type { ContentDraft } from "@/types/draft";
 
 type CreateMomentScreenProps = {
   user: {
+    id?: string;
     fullName: string;
     username: string;
     avatarUrl: string | null;
   };
+  initialDraft?: ContentDraft | null;
 };
 
 type MediaKind = "image" | "video";
@@ -60,6 +67,11 @@ type UploadUrlResponse = {
   objectKey: string;
   publicUrl: string | null;
   message?: string;
+};
+
+type DraftUploadedMedia = {
+  objectKey: string;
+  publicUrl: string | null;
 };
 
 const visibilityOptions: {
@@ -94,15 +106,32 @@ const visibilityOptions: {
   },
 ];
 
-export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
+export function CreateMomentScreen({
+  user,
+  initialDraft,
+}: CreateMomentScreenProps) {
   const router = useRouter();
 
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [mediaKind, setMediaKind] = useState<MediaKind | null>(null);
+  const [previewUrl, setPreviewUrl] = useState(
+    initialDraft?.media?.[0]?.publicUrl ?? ""
+  );
+  const [mediaKind, setMediaKind] = useState<MediaKind | null>(
+    initialDraft?.media?.[0]?.mediaKind === "video" ? "video" : initialDraft?.media?.[0] ? "image" : null
+  );
+  const [draftUploadedMedia, setDraftUploadedMedia] =
+    useState<DraftUploadedMedia | null>(() => {
+      const media = initialDraft?.media?.[0];
+      return media?.objectKey
+        ? {
+            objectKey: media.objectKey,
+            publicUrl: media.publicUrl ?? null,
+          }
+        : null;
+    });
   const [mediaMetadata, setMediaMetadata] = useState<MediaMetadata>({
     width: null,
     height: null,
@@ -114,30 +143,85 @@ export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
     longitude: null,
   });
 
-  const [caption, setCaption] = useState("");
-  const [selectedMoods, setSelectedMoods] = useState<string[]>(["Peaceful"]);
+  const [caption, setCaption] = useState(initialDraft?.caption ?? "");
+  const [selectedMoods, setSelectedMoods] = useState<string[]>(
+    initialDraft?.moods?.length ? initialDraft.moods : ["Peaceful"]
+  );
   const [visibility, setVisibility] =
-    useState<MomentVisibility>("followers");
+    useState<MomentVisibility>(
+      isMomentVisibility(initialDraft?.visibility)
+        ? initialDraft.visibility
+        : "followers"
+    );
   const [visibilityDialogOpen, setVisibilityDialogOpen] = useState(false);
-  const [locationName, setLocationName] = useState("");
-  const [latitude, setLatitude] = useState<number | null>(null);
-  const [longitude, setLongitude] = useState<number | null>(null);
+  const [locationName, setLocationName] = useState(
+    initialDraft?.locationName ?? ""
+  );
+  const [latitude, setLatitude] = useState<number | null>(
+    initialDraft?.latitude ?? null
+  );
+  const [longitude, setLongitude] = useState<number | null>(
+    initialDraft?.longitude ?? null
+  );
   const [locationSource, setLocationSource] =
-    useState<LocationSource>("unknown");
+    useState<LocationSource>(
+      isLocationSource(initialDraft?.locationSource)
+        ? initialDraft.locationSource
+        : "unknown"
+    );
   const [locationConfidence, setLocationConfidence] = useState<number | null>(
-    null
+    initialDraft?.locationConfidence ?? null
   );
   const [locationAccuracyMeters, setLocationAccuracyMeters] = useState<
     number | null
-  >(null);
+  >(initialDraft?.locationAccuracyMeters ?? null);
   const [locationMessage, setLocationMessage] = useState("");
   const [message, setMessage] = useState("");
 
   const [isPending, startTransition] = useTransition();
 
-  const hasMedia = Boolean(selectedFile && previewUrl && mediaKind);
+  const hasMedia = Boolean((selectedFile || draftUploadedMedia) && previewUrl && mediaKind);
   const selectedVisibility = visibilityOptions.find(
     (option) => option.value === visibility
+  );
+  const autosave = useContentDraftAutosave({
+    userId: user.id,
+    initialDraftId: initialDraft?.id,
+    draftType: "moment",
+    payload: {
+      caption,
+      moods: selectedMoods,
+      visibility,
+      locationName,
+      locationLabel: locationName,
+      latitude,
+      longitude,
+      locationSource,
+      locationConfidence,
+      locationAccuracyMeters,
+      media:
+        draftUploadedMedia && mediaKind
+          ? [
+              {
+                objectKey: draftUploadedMedia.objectKey,
+                publicUrl: draftUploadedMedia.publicUrl,
+                fileName: selectedFile?.name ?? initialDraft?.media?.[0]?.fileName ?? "Draft Moment",
+                mimeType: selectedFile?.type ?? initialDraft?.media?.[0]?.mimeType ?? (mediaKind === "video" ? "video/mp4" : "image/jpeg"),
+                mediaKind,
+                sizeBytes: selectedFile?.size ?? initialDraft?.media?.[0]?.sizeBytes ?? 0,
+                sortOrder: 0,
+                uploadStatus: "uploaded",
+              },
+            ]
+          : [],
+    },
+    hasMeaningfulContent: Boolean(
+      user.id && (caption.trim() || draftUploadedMedia)
+    ),
+  });
+  const autosaveLabel = formatAutosaveStatus(
+    autosave.status,
+    autosave.savedAt
   );
 
   useEffect(() => {
@@ -203,6 +287,7 @@ export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
       latitude: gps?.latitude ?? null,
       longitude: gps?.longitude ?? null,
     });
+    setDraftUploadedMedia(null);
 
     if (gps && !latitude && !longitude) {
       const suggestion = createLocationSuggestion([gps]);
@@ -218,12 +303,55 @@ export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
     }
 
     try {
+      setMessage("Uploading draft media...");
+
+      const uploadUrlResponse = await fetch("/api/moments/upload-url", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fileName: prepared.file.name,
+          contentType: prepared.file.type,
+          sizeBytes: prepared.file.size,
+          mediaKind: nextMediaKind,
+        }),
+      });
+
+      const uploadUrlResult =
+        (await uploadUrlResponse.json()) as UploadUrlResponse;
+
+      if (!uploadUrlResponse.ok) {
+        throw new Error(uploadUrlResult.message || "Unable to upload draft.");
+      }
+
+      const uploadResponse = await fetch(uploadUrlResult.uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": prepared.file.type,
+        },
+        body: prepared.file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("Draft media upload failed.");
+      }
+
+      setDraftUploadedMedia({
+        objectKey: uploadUrlResult.objectKey,
+        publicUrl: uploadUrlResult.publicUrl,
+      });
+      setMessage("Draft media saved.");
+
       const metadata = await readMediaMetadata(nextPreviewUrl, nextMediaKind);
       setMediaMetadata((current) => ({
         ...current,
         ...metadata,
       }));
-    } catch {
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Unable to save draft media."
+      );
       setMediaMetadata((current) => ({
         ...current,
         width: null,
@@ -241,6 +369,7 @@ export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
     setSelectedFile(null);
     setMediaKind(null);
     setPreviewUrl("");
+    setDraftUploadedMedia(null);
     setMediaMetadata({
       width: null,
       height: null,
@@ -257,61 +386,77 @@ export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
   async function publishMoment() {
     setMessage("");
 
-    if (!selectedFile || !mediaKind) {
+    if ((!selectedFile && !draftUploadedMedia) || !mediaKind) {
       setMessage("Add a photo or video before publishing a Moment.");
       return;
     }
 
     startTransition(async () => {
       try {
-        setMessage("Preparing secure upload...");
+        setMessage("Saving Moment...");
 
-        const uploadUrlResponse = await fetch("/api/moments/upload-url", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            fileName: selectedFile.name,
-            contentType: selectedFile.type,
-            sizeBytes: selectedFile.size,
-            mediaKind,
-          }),
-        });
+        let uploadedMedia = draftUploadedMedia;
 
-        const uploadUrlResult =
-          (await uploadUrlResponse.json()) as UploadUrlResponse;
+        if (!uploadedMedia && selectedFile) {
+          setMessage("Preparing secure upload...");
 
-        if (!uploadUrlResponse.ok) {
-          throw new Error(
-            uploadUrlResult.message || "Unable to prepare upload."
-          );
+          const uploadUrlResponse = await fetch("/api/moments/upload-url", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              fileName: selectedFile.name,
+              contentType: selectedFile.type,
+              sizeBytes: selectedFile.size,
+              mediaKind,
+            }),
+          });
+
+          const uploadUrlResult =
+            (await uploadUrlResponse.json()) as UploadUrlResponse;
+
+          if (!uploadUrlResponse.ok) {
+            throw new Error(
+              uploadUrlResult.message || "Unable to prepare upload."
+            );
+          }
+
+          setMessage("Uploading Moment media...");
+
+          const uploadResponse = await fetch(uploadUrlResult.uploadUrl, {
+            method: "PUT",
+            headers: {
+              "Content-Type": selectedFile.type,
+            },
+            body: selectedFile,
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error(
+              "Cloudflare R2 upload failed. Check your bucket CORS settings."
+            );
+          }
+
+          uploadedMedia = {
+            objectKey: uploadUrlResult.objectKey,
+            publicUrl: uploadUrlResult.publicUrl,
+          };
         }
 
-        setMessage("Uploading Moment media...");
-
-        const uploadResponse = await fetch(uploadUrlResult.uploadUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": selectedFile.type,
-          },
-          body: selectedFile,
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error(
-            "Cloudflare R2 upload failed. Check your bucket CORS settings."
-          );
+        if (!uploadedMedia) {
+          throw new Error("Moment media is not ready yet.");
         }
 
         setMessage("Saving Moment...");
 
         const formData = new FormData();
-        formData.append("objectKey", uploadUrlResult.objectKey);
-        formData.append("publicUrl", uploadUrlResult.publicUrl ?? "");
+        formData.append("draftId", autosave.draftId ?? initialDraft?.id ?? "");
+        formData.append("objectKey", uploadedMedia.objectKey);
+        formData.append("publicUrl", uploadedMedia.publicUrl ?? "");
         formData.append("mediaKind", mediaKind);
-        formData.append("mimeType", selectedFile.type);
-        formData.append("sizeBytes", String(selectedFile.size));
+        formData.append("mimeType", selectedFile?.type ?? initialDraft?.media?.[0]?.mimeType ?? "");
+        formData.append("sizeBytes", String(selectedFile?.size ?? initialDraft?.media?.[0]?.sizeBytes ?? 0));
         formData.append("width", String(mediaMetadata.width ?? ""));
         formData.append("height", String(mediaMetadata.height ?? ""));
         formData.append(
@@ -322,11 +467,21 @@ export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
         formData.append("mediaLongitude", String(mediaMetadata.longitude ?? ""));
         formData.append(
           "originalSizeBytes",
-          String(mediaMetadata.originalSize || selectedFile.size)
+          String(
+            mediaMetadata.originalSize ||
+              selectedFile?.size ||
+              initialDraft?.media?.[0]?.sizeBytes ||
+              0
+          )
         );
         formData.append(
           "optimizedSizeBytes",
-          String(mediaMetadata.optimizedSize || selectedFile.size)
+          String(
+            mediaMetadata.optimizedSize ||
+              selectedFile?.size ||
+              initialDraft?.media?.[0]?.sizeBytes ||
+              0
+          )
         );
         formData.append("optimizationStatus", mediaMetadata.optimizationStatus);
         formData.append(
@@ -424,6 +579,9 @@ export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
               <ComposerChip label="Visible" value={selectedVisibility?.label ?? "Followers"} />
               <ComposerChip label="Media" value={hasMedia ? "1" : "0"} />
               <ComposerChip label="Life" value="24h" />
+              {autosaveLabel && (
+                <ComposerChip label="Draft" value={autosaveLabel} />
+              )}
             </div>
             <div className="flex gap-2">
               <button
@@ -727,6 +885,7 @@ export function CreateMomentScreen({ user }: CreateMomentScreenProps) {
       <div className="fixed inset-x-2 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] z-40 rounded-[1.2rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-2 shadow-[0_18px_48px_var(--app-shadow)] backdrop-blur-2xl sm:hidden">
         <p className="mb-2 px-2 text-center text-[11px] font-semibold text-[var(--app-muted)]">
           {selectedVisibility?.label ?? "Followers"} - {hasMedia ? "1 media" : "No media"}
+          {autosaveLabel ? ` - ${autosaveLabel}` : ""}
         </p>
         <button
           type="button"
@@ -927,6 +1086,25 @@ function MomentVisibilityDialog({
 function getVisibilityLabel(value: MomentVisibility) {
   const selected = visibilityOptions.find((option) => option.value === value);
   return selected?.label ?? "Followers";
+}
+
+function isMomentVisibility(value?: string | null): value is MomentVisibility {
+  return (
+    value === "public" ||
+    value === "followers" ||
+    value === "inner_circle" ||
+    value === "private"
+  );
+}
+
+function isLocationSource(value?: string | null): value is LocationSource {
+  return (
+    value === "manual" ||
+    value === "browser_gps" ||
+    value === "media_gps" ||
+    value === "mixed_media" ||
+    value === "unknown"
+  );
 }
 
 function readMediaMetadata(

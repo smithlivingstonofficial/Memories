@@ -353,7 +353,7 @@ export function EditMemoryScreen({
                 placeholder={
                   isVault
                     ? "A thought I want to keep..."
-                    : "Give this memory a gentle title..."
+                    : "Give this memory a title..."
                 }
                 className="w-full border-none bg-transparent font-brand text-xl font-semibold leading-tight text-[var(--app-text)] outline-none placeholder:text-[var(--app-faint)] sm:text-4xl"
               />

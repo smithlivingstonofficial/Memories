@@ -106,6 +106,17 @@ export function MemoryDetailScreen({ data }: MemoryDetailScreenProps) {
             </div>
           )}
 
+          <div className="mt-5 flex flex-wrap gap-2 border-t border-[var(--app-border)] pt-4 text-xs font-medium text-[var(--app-muted)]">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--app-surface-soft)] px-3 py-1">
+              <CalendarDays size={12} />
+              Created {formatDateTime(memory.createdAt)}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--app-surface-soft)] px-3 py-1">
+              <CalendarDays size={12} />
+              Last edited {formatDateTime(memory.updatedAt)}
+            </span>
+          </div>
+
           <MemoryEngagementBar
             memoryId={memory.id}
             initialLikeCount={memory.engagement.likeCount}
@@ -172,7 +183,7 @@ function MemoryHeader({ memory }: { memory: FeedMemory }) {
           <span>•</span>
           <span className="inline-flex items-center gap-1">
             <CalendarDays size={13} />
-            {formatDate(memory.createdAt)}
+            {formatMemoryDate(memory)}
           </span>
         </p>
       </div>
@@ -363,12 +374,39 @@ function formatPrivacy(value: FeedMemory["privacy"]) {
   return labels[value];
 }
 
+function formatMemoryDate(memory: FeedMemory) {
+  return formatDate(memory.entryDate ?? memory.createdAt);
+}
+
 function formatDate(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+
+    return date.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }
+
   const date = new Date(value);
 
   return date.toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
+  });
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+
+  return date.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   });
 }

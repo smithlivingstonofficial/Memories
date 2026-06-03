@@ -17,7 +17,9 @@ type VaultMemoryRow = {
   privacy: "vault";
   location_name: string | null;
   tags: string[] | null;
+  entry_date: string | null;
   created_at: string;
+  updated_at: string;
 };
 
 type MediaAssetRow = {
@@ -47,7 +49,7 @@ export async function getVaultEntries(
   const { data: entries, error: entriesError } = await supabase
     .from("memories")
     .select(
-      "id, owner_id, title, content, mood, moods, privacy, location_name, tags, created_at"
+      "id, owner_id, title, content, mood, moods, privacy, location_name, tags, entry_date, created_at, updated_at"
     )
     .eq("owner_id", userId)
     .eq("privacy", "vault")
@@ -129,7 +131,9 @@ export async function getVaultEntries(
       privacy: "vault",
       locationName: entry.location_name,
       tags: entry.tags ?? [],
+      entryDate: entry.entry_date,
       createdAt: entry.created_at,
+      updatedAt: entry.updated_at,
       author: {
         id: userId,
         fullName: author.fullName,

@@ -7,6 +7,7 @@ import { CreateMemoryScreen } from "@/components/create/create-memory-screen";
 import { getAuthenticatedAppUser } from "@/lib/auth/get-authenticated-app-user";
 import { cacheTags } from "@/lib/cache-tags";
 import { normalizeEntryDate } from "@/lib/diary/entry-date";
+import { getContentDraftForCreate } from "@/lib/drafts/get-content-drafts";
 import { getVaultAccessState } from "@/lib/vault/access";
 
 export const unstable_instant = {
@@ -17,6 +18,7 @@ type CreateMemoryPageProps = {
   searchParams?: Promise<{
     date?: string;
     draft?: string;
+    draftId?: string;
   }>;
 };
 
@@ -43,14 +45,24 @@ async function CreateMemoryContent({ searchParams }: CreateMemoryPageProps) {
 
   cacheTag(cacheTags.userProfile(appUser.id));
   cacheTag(cacheTags.userVault(appUser.id));
+  cacheTag(cacheTags.userDrafts(appUser.id));
 
-  const vaultAccess = await getVaultAccessState(supabase, appUser.id);
+  const [vaultAccess, initialDraft] = await Promise.all([
+    getVaultAccessState(supabase, appUser.id),
+    getContentDraftForCreate({
+      supabase,
+      userId: appUser.id,
+      draftId: params?.draftId,
+      draftType: "memory",
+    }),
+  ]);
 
   return (
     <AppLayout user={appUser}>
       <CreateMemoryScreen
         initialEntryDate={initialEntryDate}
         draftSource={draftSource}
+        initialDraft={initialDraft}
         vaultAccess={vaultAccess}
         user={appUser}
       />

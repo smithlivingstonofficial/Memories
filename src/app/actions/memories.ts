@@ -8,6 +8,7 @@ import { deleteMediaAssetsCompletely } from "@/lib/media/delete-media";
 import { cacheTags } from "@/lib/cache-tags";
 import { normalizeMoods } from "@/lib/moods";
 import { requireVaultUnlocked } from "@/lib/vault/access";
+import { markContentDraftPublished } from "@/app/actions/drafts";
 
 export type CreateMemoryState = {
   message?: string;
@@ -474,6 +475,12 @@ export async function createMemoryAction(
 
   updateUserContentTags(user.id);
   updateMemoryTags(memory.id);
+  await markContentDraftPublished({
+    supabase,
+    userId: user.id,
+    draftId: formData.get("draftId"),
+    publishedContentId: memory.id,
+  });
 
   if (privacy === "vault") {
     updateVaultTags(user.id);
@@ -672,6 +679,12 @@ export async function createVaultEntryAction(
   updateUserContentTags(user.id);
   updateVaultTags(user.id);
   updateMemoryTags(vaultEntry.id);
+  await markContentDraftPublished({
+    supabase,
+    userId: user.id,
+    draftId: formData.get("draftId"),
+    publishedContentId: vaultEntry.id,
+  });
 
   redirect("/vault");
 }

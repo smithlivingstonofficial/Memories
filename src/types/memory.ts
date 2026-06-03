@@ -14,7 +14,9 @@ export type FeedMemory = {
   privacy: "private" | "followers" | "inner_circle" | "public" | "vault";
   locationName: string | null;
   tags: string[];
+  entryDate: string | null;
   createdAt: string;
+  updatedAt: string;
   author: {
     id: string;
     fullName: string;

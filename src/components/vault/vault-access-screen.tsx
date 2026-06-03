@@ -173,7 +173,7 @@ export function VaultAccessPanel({
         </div>
       </div>
 
-      <form action={hasPasscode ? unlockAction : setAction} className="space-y-3">
+      <div className="space-y-3">
         <PinInput
           name="pin"
           label={hasPasscode ? "Vault PIN" : "Create PIN"}
@@ -202,6 +202,7 @@ export function VaultAccessPanel({
 
         <button
           type="submit"
+          formAction={hasPasscode ? unlockAction : setAction}
           disabled={setPending || unlockPending}
           className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--app-accent-hover)] disabled:opacity-60"
         >
@@ -217,7 +218,7 @@ export function VaultAccessPanel({
             </>
           )}
         </button>
-      </form>
+      </div>
     </div>
   );
 }

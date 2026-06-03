@@ -9,6 +9,7 @@ import {
   CalendarDays,
   ChevronDown,
   CheckCircle2,
+  ImagePlus,
   Loader2,
   LockKeyhole,
   Sparkles,
@@ -43,6 +44,11 @@ import {
   type QuickMemoryDraft,
 } from "@/lib/quick-memory-draft";
 import { cn } from "@/lib/utils";
+import {
+  formatAutosaveStatus,
+  useContentDraftAutosave,
+} from "@/hooks/use-content-draft-autosave";
+import type { ContentDraft } from "@/types/draft";
 
 const initialState: CreateMemoryState = {
   message: "",
@@ -76,6 +82,7 @@ type CreateMemoryScreenProps = {
     hasPasscode: boolean;
     isUnlocked: boolean;
   };
+  initialDraft?: ContentDraft | null;
 };
 
 export function CreateMemoryScreen({
@@ -83,6 +90,7 @@ export function CreateMemoryScreen({
   draftSource,
   user,
   vaultAccess,
+  initialDraft,
 }: CreateMemoryScreenProps) {
   const [state, formAction, pending] = useActionState(
     createMemoryAction,
@@ -92,27 +100,43 @@ export function CreateMemoryScreen({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [entryDate, setEntryDate] = useState(() =>
-    normalizeDateInput(initialEntryDate)
+    normalizeDateInput(initialDraft?.entryDate ?? initialEntryDate)
   );
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [selectedMoods, setSelectedMoods] = useState<string[]>(["Peaceful"]);
+  const [title, setTitle] = useState(initialDraft?.title ?? "");
+  const [content, setContent] = useState(initialDraft?.content ?? "");
+  const [selectedMoods, setSelectedMoods] = useState<string[]>(
+    initialDraft?.moods?.length ? initialDraft.moods : ["Peaceful"]
+  );
   const [privacy, setPrivacy] =
-    useState<(typeof MEMORY_PRIVACY_OPTIONS)[number]["value"]>("private");
-  const [locationName, setLocationName] = useState("");
-  const [latitude, setLatitude] = useState<number | null>(null);
-  const [longitude, setLongitude] = useState<number | null>(null);
+    useState<(typeof MEMORY_PRIVACY_OPTIONS)[number]["value"]>(
+      isMemoryPrivacy(initialDraft?.privacy) ? initialDraft.privacy : "private"
+    );
+  const [locationName, setLocationName] = useState(
+    initialDraft?.locationName ?? ""
+  );
+  const [latitude, setLatitude] = useState<number | null>(
+    initialDraft?.latitude ?? null
+  );
+  const [longitude, setLongitude] = useState<number | null>(
+    initialDraft?.longitude ?? null
+  );
   const [locationSource, setLocationSource] =
-    useState<LocationSource>("unknown");
+    useState<LocationSource>(
+      isLocationSource(initialDraft?.locationSource)
+        ? initialDraft.locationSource
+        : "unknown"
+    );
   const [locationConfidence, setLocationConfidence] = useState<number | null>(
-    null
+    initialDraft?.locationConfidence ?? null
   );
   const [locationAccuracyMeters, setLocationAccuracyMeters] = useState<
     number | null
-  >(null);
+  >(initialDraft?.locationAccuracyMeters ?? null);
   const [locationMessage, setLocationMessage] = useState("");
-  const [tags, setTags] = useState("");
-  const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>([]);
+  const [tags, setTags] = useState((initialDraft?.tags ?? []).join(", "));
+  const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>(() =>
+    mapDraftMediaToUploadedAssets(initialDraft)
+  );
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
   const [privacyDialogOpen, setPrivacyDialogOpen] = useState(false);
@@ -130,19 +154,79 @@ export function CreateMemoryScreen({
   }, [content]);
 
   const readingTime = Math.max(1, Math.ceil(wordCount / 180));
+  const draftPayload = useMemo(
+    () => ({
+      title,
+      content,
+      moods: selectedMoods,
+      privacy,
+      entryDate,
+      entryTimezone: "Asia/Kolkata",
+      locationName,
+      locationLabel: locationName,
+      latitude,
+      longitude,
+      locationSource,
+      locationConfidence,
+      locationAccuracyMeters,
+      tags: parseTags(tags),
+      media: uploadedAssets.map((asset, index) => ({
+        mediaAssetId: asset.assetId,
+        objectKey: asset.objectKey,
+        publicUrl: asset.publicUrl,
+        fileName: asset.fileName,
+        mimeType: asset.mimeType,
+        mediaKind: asset.mimeType.startsWith("video/") ? "video" as const : "image" as const,
+        sizeBytes: asset.optimizedSize || asset.originalSize,
+        sortOrder: index,
+        uploadStatus: "uploaded" as const,
+      })),
+    }),
+    [
+      content,
+      entryDate,
+      latitude,
+      locationAccuracyMeters,
+      locationConfidence,
+      locationName,
+      locationSource,
+      longitude,
+      privacy,
+      selectedMoods,
+      tags,
+      title,
+      uploadedAssets,
+    ]
+  );
+  const hasMeaningfulDraft =
+    Boolean(title.trim() || content.trim() || uploadedAssets.length > 0) &&
+    Boolean(user?.id);
+  const autosave = useContentDraftAutosave({
+    userId: user?.id,
+    initialDraftId: initialDraft?.id,
+    draftType: "memory",
+    payload: draftPayload,
+    hasMeaningfulContent: hasMeaningfulDraft,
+  });
+  const autosaveLabel = formatAutosaveStatus(
+    autosave.status,
+    autosave.savedAt
+  );
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       const draft = readQuickDraft(user?.id, draftSource);
 
-      setTitle(draft.title);
-      setContent(draft.content);
+      if (!initialDraft) {
+        setTitle(draft.title);
+        setContent(draft.content);
+      }
     }, 0);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [draftSource, user?.id]);
+  }, [draftSource, initialDraft, user?.id]);
 
   useEffect(() => {
     if (draftSource === "quick" && user?.id && state.message) {
@@ -293,6 +377,12 @@ export function CreateMemoryScreen({
       >
         <input
           type="hidden"
+          name="draftId"
+          value={autosave.draftId ?? initialDraft?.id ?? ""}
+        />
+
+        <input
+          type="hidden"
           name="moods"
           value={JSON.stringify(selectedMoods)}
         />
@@ -339,6 +429,12 @@ export function CreateMemoryScreen({
                   <span className="hidden sm:inline"> writing</span>
                 </p>
               )}
+
+              {autosaveLabel && (
+                <p className="mt-1 text-xs font-medium text-[var(--app-faint)] sm:hidden">
+                  {autosaveLabel}
+                </p>
+              )}
             </div>
 
             <div className="hidden flex-col gap-3 sm:flex lg:items-end">
@@ -352,6 +448,9 @@ export function CreateMemoryScreen({
                   label="Media"
                   value={`${uploadedAssets.length}/10`}
                 />
+                {autosaveLabel && (
+                  <ComposerChip label="Draft" value={autosaveLabel} />
+                )}
               </div>
 
               <div className="flex flex-col gap-2 sm:flex-row">
@@ -413,7 +512,7 @@ export function CreateMemoryScreen({
                   name="title"
                   value={title}
                   onChange={(event) => handleTitleChange(event.target.value)}
-                  placeholder="Give this memory a gentle title..."
+                  placeholder="Give this memory a title..."
                   className="w-full border-none bg-transparent font-brand text-xl font-semibold leading-tight text-[var(--app-text)] outline-none placeholder:text-[var(--app-faint)] sm:text-4xl"
                 />
 
@@ -763,7 +862,11 @@ function MediaThumbnailStrip({
           key={asset.assetId}
           className="group relative h-24 w-28 shrink-0 overflow-hidden rounded-[1.1rem] border border-[var(--app-border)] bg-[var(--app-surface-soft)]"
         >
-          {asset.mimeType.startsWith("image/") ? (
+          {!asset.previewUrl ? (
+            <div className="flex h-full w-full items-center justify-center text-[var(--app-accent)]">
+              <ImagePlus size={18} />
+            </div>
+          ) : asset.mimeType.startsWith("image/") ? (
             <img
               src={asset.previewUrl}
               alt={asset.fileName}
@@ -924,6 +1027,59 @@ function isValidDateInput(value?: string) {
 
 function normalizeDateInput(value?: string) {
   return isValidDateInput(value) ? value! : getTodayInputValue();
+}
+
+function isMemoryPrivacy(
+  value?: string | null
+): value is (typeof MEMORY_PRIVACY_OPTIONS)[number]["value"] {
+  return MEMORY_PRIVACY_OPTIONS.some((option) => option.value === value);
+}
+
+function isLocationSource(value?: string | null): value is LocationSource {
+  return (
+    value === "manual" ||
+    value === "browser_gps" ||
+    value === "media_gps" ||
+    value === "mixed_media" ||
+    value === "unknown"
+  );
+}
+
+function parseTags(value: string) {
+  return value
+    .split(",")
+    .map((tag) => tag.trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function mapDraftMediaToUploadedAssets(draft?: ContentDraft | null) {
+  if (!draft?.media?.length) return [];
+
+  return draft.media
+    .filter((media) => media.uploadStatus !== "deleted")
+    .map((media): UploadedAsset => {
+      const metadata = media.metadata ?? {};
+
+      return {
+        assetId: media.mediaAssetId ?? media.id ?? crypto.randomUUID(),
+        objectKey: media.objectKey ?? "",
+        publicUrl: media.publicUrl ?? null,
+        fileName: media.fileName ?? "Draft media",
+        mimeType:
+          media.mimeType ??
+          (media.mediaKind === "video" ? "video/mp4" : "image/jpeg"),
+        previewUrl:
+          typeof metadata.previewUrl === "string"
+            ? metadata.previewUrl
+            : media.publicUrl ?? "",
+        latitude: null,
+        longitude: null,
+        originalSize: media.sizeBytes ?? 0,
+        optimizedSize: media.sizeBytes ?? 0,
+        optimizationStatus: "not_needed",
+      };
+    });
 }
 
 function readQuickDraft(

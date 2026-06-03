@@ -40,7 +40,9 @@ type MemoryRow = {
   privacy: "private" | "followers" | "inner_circle" | "public" | "vault";
   location_name: string | null;
   tags: string[] | null;
+  entry_date: string | null;
   created_at: string;
+  updated_at: string;
 };
 
 type MediaAssetRow = {
@@ -233,7 +235,7 @@ export async function getPublicProfilePageData({
   const { data: publicMemories, error: memoriesError } = await supabase
     .from("memories")
     .select(
-      "id, owner_id, title, content, mood, moods, privacy, location_name, tags, created_at"
+      "id, owner_id, title, content, mood, moods, privacy, location_name, tags, entry_date, created_at, updated_at"
     )
     .eq("owner_id", profile.id)
     .eq("privacy", "public")
@@ -336,7 +338,9 @@ export async function getPublicProfilePageData({
       privacy: memory.privacy,
       locationName: memory.location_name,
       tags: memory.tags ?? [],
+      entryDate: memory.entry_date,
       createdAt: memory.created_at,
+      updatedAt: memory.updated_at,
       author: {
         id: profile.id,
         fullName: profile.fullName,

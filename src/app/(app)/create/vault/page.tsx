@@ -7,31 +7,48 @@ import { CreateVaultScreen } from "@/components/create/create-vault-screen";
 import { VaultAccessScreen } from "@/components/vault/vault-access-screen";
 import { getAuthenticatedAppUser } from "@/lib/auth/get-authenticated-app-user";
 import { cacheTags } from "@/lib/cache-tags";
+import { getContentDraftForCreate } from "@/lib/drafts/get-content-drafts";
 import { getVaultAccessState } from "@/lib/vault/access";
 
 export const unstable_instant = {
   prefetch: "static",
 };
 
-export default function CreateVaultPage() {
+type CreateVaultPageProps = {
+  searchParams?: Promise<{
+    draftId?: string;
+  }>;
+};
+
+export default function CreateVaultPage({ searchParams }: CreateVaultPageProps) {
   return (
     <Suspense fallback={<AppContentLoading />}>
-      <CreateVaultContent />
+      <CreateVaultContent searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function CreateVaultContent() {
+async function CreateVaultContent({ searchParams }: CreateVaultPageProps) {
   "use cache: private";
   cacheLife({ stale: 20, revalidate: 45, expire: 180 });
 
+  const params = await searchParams;
   const supabase = await createClient();
   const appUser = await getAuthenticatedAppUser();
 
   cacheTag(cacheTags.userProfile(appUser.id));
   cacheTag(cacheTags.userVault(appUser.id));
+  cacheTag(cacheTags.userDrafts(appUser.id));
 
-  const vaultAccess = await getVaultAccessState(supabase, appUser.id);
+  const [vaultAccess, initialDraft] = await Promise.all([
+    getVaultAccessState(supabase, appUser.id),
+    getContentDraftForCreate({
+      supabase,
+      userId: appUser.id,
+      draftId: params?.draftId,
+      draftType: "vault",
+    }),
+  ]);
 
   if (!vaultAccess.isUnlocked) {
     return (
@@ -52,7 +69,7 @@ async function CreateVaultContent() {
 
   return (
     <AppLayout user={appUser}>
-      <CreateVaultScreen />
+      <CreateVaultScreen initialDraft={initialDraft} user={appUser} />
     </AppLayout>
   );
 }

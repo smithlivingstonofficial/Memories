@@ -18,7 +18,9 @@ type MemoryRow = {
   privacy: "private" | "followers" | "inner_circle" | "public" | "vault";
   location_name: string | null;
   tags: string[] | null;
+  entry_date: string | null;
   created_at: string;
+  updated_at: string;
 };
 
 type PublicProfileRow = {
@@ -76,7 +78,7 @@ export async function getHomeFeed(
   const { data: memories, error: memoriesError } = await supabase
     .from("memories")
     .select(
-      "id, owner_id, title, content, mood, moods, privacy, location_name, tags, created_at"
+      "id, owner_id, title, content, mood, moods, privacy, location_name, tags, entry_date, created_at, updated_at"
     )
     .neq("privacy", "vault")
     .order("created_at", { ascending: false })
@@ -184,7 +186,9 @@ export async function getHomeFeed(
       privacy: memory.privacy,
       locationName: memory.location_name,
       tags: memory.tags ?? [],
+      entryDate: memory.entry_date,
       createdAt: memory.created_at,
+      updatedAt: memory.updated_at,
       author: {
         id: memory.owner_id,
         fullName: profile?.full_name ?? "Memories User",

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { markContentDraftPublished } from "@/app/actions/drafts";
 
 export type MomentActionState = {
   success: boolean;
@@ -295,6 +296,12 @@ export async function createMomentAction(
   revalidatePath("/create");
   revalidatePath("/create/moment");
   revalidatePath("/profile");
+  await markContentDraftPublished({
+    supabase,
+    userId: user.id,
+    draftId: formData.get("draftId"),
+    publishedContentId: moment.id,
+  });
 
   return {
     success: true,

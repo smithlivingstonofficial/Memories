@@ -385,7 +385,7 @@ function ProfileMemoryCard({ memory }: { memory: FeedMemory }) {
         </div>
 
         <p className="mb-2 text-xs font-medium text-[var(--app-muted)]">
-          {formatDate(memory.createdAt)}
+          {formatMemoryDate(memory)}
         </p>
 
         <Link href={`/memory/${memory.id}`}>
@@ -444,7 +444,22 @@ function EmptyProfileMemories() {
   );
 }
 
+function formatMemoryDate(memory: FeedMemory) {
+  return formatDate(memory.entryDate ?? memory.createdAt);
+}
+
 function formatDate(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+
+    return date.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }
+
   const date = new Date(value);
 
   return date.toLocaleDateString("en-IN", {

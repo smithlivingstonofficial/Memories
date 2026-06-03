@@ -8,6 +8,7 @@ import { getAuthenticatedAppUser } from "@/lib/auth/get-authenticated-app-user";
 import { cacheTags } from "@/lib/cache-tags";
 import { getHomeFeed } from "@/lib/memories/get-home-feed";
 import { getActiveMoments } from "@/lib/moments/get-active-moments";
+import { getHomeDrafts } from "@/lib/drafts/get-content-drafts";
 
 export const unstable_instant = {
   prefetch: "static",
@@ -30,11 +31,13 @@ async function HomeContent() {
 
   cacheTag(cacheTags.userProfile(appUser.id));
   cacheTag(cacheTags.userMemories(appUser.id));
+  cacheTag(cacheTags.userDrafts(appUser.id));
   cacheTag(cacheTags.homeFeed(appUser.id));
 
-  const [memories, activeMoments] = await Promise.all([
+  const [memories, activeMoments, drafts] = await Promise.all([
     getHomeFeed(supabase, appUser.id),
     getActiveMoments(supabase, appUser.id),
+    getHomeDrafts({ supabase, userId: appUser.id }),
   ]);
 
   return (
@@ -42,6 +45,7 @@ async function HomeContent() {
       <HomeScreen
         memories={memories}
         activeMoments={activeMoments}
+        drafts={drafts}
         currentUserId={appUser.id}
       />
     </AppLayout>

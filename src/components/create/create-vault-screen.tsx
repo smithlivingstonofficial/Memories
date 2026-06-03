@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Loader2,
+  ImagePlus,
   LockKeyhole,
   Tags,
   Trash2,
@@ -34,6 +35,11 @@ import {
 import { MoodSelector } from "@/components/create/mood-selector";
 import { VAULT_MOODS } from "@/lib/moods";
 import { cn } from "@/lib/utils";
+import {
+  formatAutosaveStatus,
+  useContentDraftAutosave,
+} from "@/hooks/use-content-draft-autosave";
+import type { ContentDraft } from "@/types/draft";
 
 const initialState: CreateVaultEntryState = {
   message: "",
@@ -54,7 +60,15 @@ type UploadedAsset = {
   optimizationStatus: "not_needed" | "optimized" | "skipped" | "failed";
 };
 
-export function CreateVaultScreen() {
+type CreateVaultScreenProps = {
+  initialDraft?: ContentDraft | null;
+  user?: {
+    id?: string;
+    username: string;
+  };
+};
+
+export function CreateVaultScreen({ initialDraft, user }: CreateVaultScreenProps) {
   const [state, formAction, pending] = useActionState(
     createVaultEntryAction,
     initialState
@@ -62,23 +76,37 @@ export function CreateVaultScreen() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [selectedMoods, setSelectedMoods] = useState<string[]>(["Thoughtful"]);
-  const [locationName, setLocationName] = useState("");
-  const [latitude, setLatitude] = useState<number | null>(null);
-  const [longitude, setLongitude] = useState<number | null>(null);
+  const [title, setTitle] = useState(initialDraft?.title ?? "");
+  const [content, setContent] = useState(initialDraft?.content ?? "");
+  const [selectedMoods, setSelectedMoods] = useState<string[]>(
+    initialDraft?.moods?.length ? initialDraft.moods : ["Thoughtful"]
+  );
+  const [locationName, setLocationName] = useState(
+    initialDraft?.locationName ?? ""
+  );
+  const [latitude, setLatitude] = useState<number | null>(
+    initialDraft?.latitude ?? null
+  );
+  const [longitude, setLongitude] = useState<number | null>(
+    initialDraft?.longitude ?? null
+  );
   const [locationSource, setLocationSource] =
-    useState<LocationSource>("unknown");
+    useState<LocationSource>(
+      isLocationSource(initialDraft?.locationSource)
+        ? initialDraft.locationSource
+        : "unknown"
+    );
   const [locationConfidence, setLocationConfidence] = useState<number | null>(
-    null
+    initialDraft?.locationConfidence ?? null
   );
   const [locationAccuracyMeters, setLocationAccuracyMeters] = useState<
     number | null
-  >(null);
+  >(initialDraft?.locationAccuracyMeters ?? null);
   const [locationMessage, setLocationMessage] = useState("");
-  const [tags, setTags] = useState("");
-  const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>([]);
+  const [tags, setTags] = useState((initialDraft?.tags ?? []).join(", "));
+  const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>(() =>
+    mapDraftMediaToUploadedAssets(initialDraft)
+  );
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
 
@@ -87,6 +115,61 @@ export function CreateVaultScreen() {
       ? 0
       : content.trim().split(/\s+/).length;
   }, [content]);
+  const draftPayload = useMemo(
+    () => ({
+      title,
+      content,
+      moods: selectedMoods,
+      privacy: "vault",
+      entryTimezone: "Asia/Kolkata",
+      locationName,
+      locationLabel: locationName,
+      latitude,
+      longitude,
+      locationSource,
+      locationConfidence,
+      locationAccuracyMeters,
+      tags: parseTags(tags),
+      media: uploadedAssets.map((asset, index) => ({
+        mediaAssetId: asset.assetId,
+        objectKey: asset.objectKey,
+        publicUrl: asset.publicUrl,
+        fileName: asset.fileName,
+        mimeType: asset.mimeType,
+        mediaKind: asset.mimeType.startsWith("video/") ? "video" as const : "image" as const,
+        sizeBytes: asset.optimizedSize || asset.originalSize,
+        sortOrder: index,
+        uploadStatus: "uploaded" as const,
+      })),
+    }),
+    [
+      content,
+      latitude,
+      locationAccuracyMeters,
+      locationConfidence,
+      locationName,
+      locationSource,
+      longitude,
+      selectedMoods,
+      tags,
+      title,
+      uploadedAssets,
+    ]
+  );
+  const hasMeaningfulDraft =
+    Boolean(title.trim() || content.trim() || uploadedAssets.length > 0) &&
+    Boolean(user?.id);
+  const autosave = useContentDraftAutosave({
+    userId: user?.id,
+    initialDraftId: initialDraft?.id,
+    draftType: "vault",
+    payload: draftPayload,
+    hasMeaningfulContent: hasMeaningfulDraft,
+  });
+  const autosaveLabel = formatAutosaveStatus(
+    autosave.status,
+    autosave.savedAt
+  );
 
   async function handleFileChange(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -191,6 +274,12 @@ export function CreateVaultScreen() {
       >
         <input
           type="hidden"
+          name="draftId"
+          value={autosave.draftId ?? initialDraft?.id ?? ""}
+        />
+
+        <input
+          type="hidden"
           name="moods"
           value={JSON.stringify(selectedMoods)}
         />
@@ -233,6 +322,9 @@ export function CreateVaultScreen() {
               <ComposerChip label="Privacy" value="Vault" />
               <ComposerChip label="Words" value={wordCount.toString()} />
               <ComposerChip label="Media" value={`${uploadedAssets.length}/10`} />
+              {autosaveLabel && (
+                <ComposerChip label="Draft" value={autosaveLabel} />
+              )}
             </div>
 
             <div className="flex gap-2">
@@ -427,7 +519,11 @@ export function CreateVaultScreen() {
                       key={asset.assetId}
                       className="group relative h-24 w-28 shrink-0 overflow-hidden rounded-[1.1rem] border border-[var(--app-border)] bg-[var(--app-surface-soft)]"
                     >
-                      {asset.mimeType.startsWith("image/") ? (
+                      {!asset.previewUrl ? (
+                        <div className="flex h-full w-full items-center justify-center text-[var(--app-accent)]">
+                          <ImagePlus size={18} />
+                        </div>
+                      ) : asset.mimeType.startsWith("image/") ? (
                         <img
                           src={asset.previewUrl}
                           alt={asset.fileName}
@@ -561,4 +657,51 @@ function FieldError({ message }: { message?: string }) {
   if (!message) return null;
 
   return <p className="mt-1.5 text-xs font-medium text-rose-500">{message}</p>;
+}
+
+function isLocationSource(value?: string | null): value is LocationSource {
+  return (
+    value === "manual" ||
+    value === "browser_gps" ||
+    value === "media_gps" ||
+    value === "mixed_media" ||
+    value === "unknown"
+  );
+}
+
+function parseTags(value: string) {
+  return value
+    .split(",")
+    .map((tag) => tag.trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function mapDraftMediaToUploadedAssets(draft?: ContentDraft | null) {
+  if (!draft?.media?.length) return [];
+
+  return draft.media
+    .filter((media) => media.uploadStatus !== "deleted")
+    .map((media): UploadedAsset => {
+      const metadata = media.metadata ?? {};
+
+      return {
+        assetId: media.mediaAssetId ?? media.id ?? crypto.randomUUID(),
+        objectKey: media.objectKey ?? "",
+        publicUrl: media.publicUrl ?? null,
+        fileName: media.fileName ?? "Draft media",
+        mimeType:
+          media.mimeType ??
+          (media.mediaKind === "video" ? "video/mp4" : "image/jpeg"),
+        previewUrl:
+          typeof metadata.previewUrl === "string"
+            ? metadata.previewUrl
+            : media.publicUrl ?? "",
+        latitude: null,
+        longitude: null,
+        originalSize: media.sizeBytes ?? 0,
+        optimizedSize: media.sizeBytes ?? 0,
+        optimizationStatus: "not_needed",
+      };
+    });
 }
