@@ -18,6 +18,7 @@ import {
   createVaultEntryAction,
   type CreateVaultEntryState,
 } from "@/app/actions/memories";
+import { deleteUploadedMedia } from "@/lib/media/delete-uploaded-media";
 import { uploadMedia } from "@/lib/media/upload-media";
 import {
   createLocationSuggestion,
@@ -169,6 +170,7 @@ export function CreateVaultScreen() {
     setUploadedAssets((current) =>
       current.filter((asset) => asset.assetId !== assetId)
     );
+    void deleteUploadedMedia(assetId);
   }
 
   function handleLocationNameChange(value: string) {

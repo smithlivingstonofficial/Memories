@@ -409,6 +409,14 @@ export async function createMemoryAction(
     .single();
 
   if (memoryError || !memory) {
+    if (mediaAssetIds.length > 0) {
+      await deleteMediaAssetsCompletely({
+        supabase,
+        userId: user.id,
+        assetIds: mediaAssetIds,
+      });
+    }
+
     return {
       message: memoryError?.message || "Unable to save memory.",
     };
@@ -429,11 +437,15 @@ export async function createMemoryAction(
     if (memoryMediaError) {
       await supabase
         .from("memories")
-        .update({
-          media_count: 0,
-        })
+        .delete()
         .eq("id", memory.id)
         .eq("owner_id", user.id);
+
+      await deleteMediaAssetsCompletely({
+        supabase,
+        userId: user.id,
+        assetIds: mediaAssetIds,
+      });
 
       return {
         message:
@@ -597,6 +609,14 @@ export async function createVaultEntryAction(
     .single();
 
   if (vaultError || !vaultEntry) {
+    if (mediaAssetIds.length > 0) {
+      await deleteMediaAssetsCompletely({
+        supabase,
+        userId: user.id,
+        assetIds: mediaAssetIds,
+      });
+    }
+
     return {
       message: vaultError?.message || "Unable to save Vault entry.",
     };
@@ -617,11 +637,15 @@ export async function createVaultEntryAction(
     if (memoryMediaError) {
       await supabase
         .from("memories")
-        .update({
-          media_count: 0,
-        })
+        .delete()
         .eq("id", vaultEntry.id)
         .eq("owner_id", user.id);
+
+      await deleteMediaAssetsCompletely({
+        supabase,
+        userId: user.id,
+        assetIds: mediaAssetIds,
+      });
 
       return {
         message:
@@ -748,11 +772,22 @@ export async function editMemoryAction(
     .map((item) => item.asset_id)
     .filter((id): id is string => Boolean(id));
   const currentAssetIdSet = new Set(currentAssetIds);
-  const keptExistingAssetIds = editData.existingMediaAssetIds.filter(
-    (assetId) => currentAssetIdSet.has(assetId)
+  const keptExistingAssetIds = Array.from(
+    new Set(
+      editData.existingMediaAssetIds.filter((assetId) =>
+        currentAssetIdSet.has(assetId)
+      )
+    )
   );
-  const newAssetIds = editData.mediaAssetIds;
+  const newAssetIds = Array.from(
+    new Set(
+      editData.mediaAssetIds.filter((assetId) => !currentAssetIdSet.has(assetId))
+    )
+  );
   const nextAssetIds = [...keptExistingAssetIds, ...newAssetIds];
+  const removedAssetIds = currentAssetIds.filter(
+    (assetId) => !nextAssetIds.includes(assetId)
+  );
 
   if (newAssetIds.length > 0) {
     const { data: uploadedAssets, error: assetsError } = await supabase
@@ -829,24 +864,34 @@ export async function editMemoryAction(
     };
   }
 
-  const { error: deleteLinksError } = await supabase
-    .from("memory_media")
-    .delete()
-    .eq("memory_id", editData.memoryId)
-    .eq("owner_id", user.id);
+  if (removedAssetIds.length > 0) {
+    const { error: deleteLinksError } = await supabase
+      .from("memory_media")
+      .delete()
+      .eq("memory_id", editData.memoryId)
+      .eq("owner_id", user.id)
+      .in("asset_id", removedAssetIds);
 
-  if (deleteLinksError) {
-    return {
-      message: deleteLinksError.message || "Memory updated, but media sync failed.",
-    };
+    if (deleteLinksError) {
+      await supabase
+        .from("memories")
+        .update({ media_count: currentAssetIds.length })
+        .eq("id", editData.memoryId)
+        .eq("owner_id", user.id);
+
+      return {
+        message:
+          deleteLinksError.message || "Memory updated, but media sync failed.",
+      };
+    }
   }
 
-  if (nextAssetIds.length > 0) {
-    const rows = nextAssetIds.map((assetId, index) => ({
+  if (newAssetIds.length > 0) {
+    const rows = newAssetIds.map((assetId) => ({
       memory_id: editData.memoryId,
       asset_id: assetId,
       owner_id: user.id,
-      sort_order: index,
+      sort_order: nextAssetIds.indexOf(assetId),
     }));
 
     const { error: insertLinksError } = await supabase
@@ -854,6 +899,18 @@ export async function editMemoryAction(
       .insert(rows);
 
     if (insertLinksError) {
+      await deleteMediaAssetsCompletely({
+        supabase,
+        userId: user.id,
+        assetIds: newAssetIds,
+      });
+
+      await supabase
+        .from("memories")
+        .update({ media_count: keptExistingAssetIds.length })
+        .eq("id", editData.memoryId)
+        .eq("owner_id", user.id);
+
       return {
         message:
           insertLinksError.message || "Memory updated, but media sync failed.",
@@ -861,9 +918,14 @@ export async function editMemoryAction(
     }
   }
 
-  const removedAssetIds = currentAssetIds.filter(
-    (assetId) => !nextAssetIds.includes(assetId)
-  );
+  for (const [index, assetId] of nextAssetIds.entries()) {
+    await supabase
+      .from("memory_media")
+      .update({ sort_order: index })
+      .eq("memory_id", editData.memoryId)
+      .eq("owner_id", user.id)
+      .eq("asset_id", assetId);
+  }
 
   if (removedAssetIds.length > 0) {
     await deleteMediaAssetsCompletely({

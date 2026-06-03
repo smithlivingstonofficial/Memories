@@ -20,6 +20,7 @@ import {
   createMemoryAction,
   type CreateMemoryState,
 } from "@/app/actions/memories";
+import { deleteUploadedMedia } from "@/lib/media/delete-uploaded-media";
 import { uploadMedia } from "@/lib/media/upload-media";
 import {
   createLocationSuggestion,
@@ -236,6 +237,7 @@ export function CreateMemoryScreen({
     setUploadedAssets((current) =>
       current.filter((asset) => asset.assetId !== assetId)
     );
+    void deleteUploadedMedia(assetId);
   }
 
   function saveQuickDraft(nextTitle: string, nextContent: string) {

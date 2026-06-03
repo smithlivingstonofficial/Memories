@@ -17,6 +17,7 @@ import {
   updateProfileAction,
   type UpdateProfileState,
 } from "@/app/actions/profile";
+import { deleteUploadedMedia } from "@/lib/media/delete-uploaded-media";
 import { uploadMedia } from "@/lib/media/upload-media";
 import { Button } from "@/components/ui/button";
 
@@ -95,7 +96,11 @@ export function EditProfileScreen({ initialProfile }: EditProfileScreenProps) {
 
     try {
       const uploaded = await uploadProfileImage(file, "profile_avatar");
+      const previousAssetId = avatarAsset?.assetId;
       setAvatarAsset(uploaded);
+      if (previousAssetId) {
+        void deleteUploadedMedia(previousAssetId);
+      }
       setUploadMessage("Profile photo uploaded. Save changes to apply it.");
     } catch (error) {
       setUploadMessage(
@@ -118,7 +123,11 @@ export function EditProfileScreen({ initialProfile }: EditProfileScreenProps) {
 
     try {
       const uploaded = await uploadProfileImage(file, "profile_cover");
+      const previousAssetId = coverAsset?.assetId;
       setCoverAsset(uploaded);
+      if (previousAssetId) {
+        void deleteUploadedMedia(previousAssetId);
+      }
       setUploadMessage("Cover image uploaded. Save changes to apply it.");
     } catch (error) {
       setUploadMessage(

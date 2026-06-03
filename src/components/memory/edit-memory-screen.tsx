@@ -21,6 +21,7 @@ import {
 } from "@/app/actions/memories";
 import { MoodSelector } from "@/components/create/mood-selector";
 import { Button } from "@/components/ui/button";
+import { deleteUploadedMedia } from "@/lib/media/delete-uploaded-media";
 import { uploadMedia } from "@/lib/media/upload-media";
 import {
   createLocationSuggestion,
@@ -213,6 +214,7 @@ export function EditMemoryScreen({
     setUploadedAssets((current) =>
       current.filter((asset) => asset.assetId !== assetId)
     );
+    void deleteUploadedMedia(assetId);
   }
 
   function handleLocationNameChange(value: string) {
