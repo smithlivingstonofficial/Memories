@@ -1,10 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateTag, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { deleteMediaAssetsCompletely } from "@/lib/media/delete-media";
+import { cacheTags } from "@/lib/cache-tags";
 import { normalizeMoods } from "@/lib/moods";
 import { requireVaultUnlocked } from "@/lib/vault/access";
 
@@ -263,6 +264,22 @@ function getMediaPurpose(
   return privacy === "vault" ? "vault" : "memory";
 }
 
+function updateUserContentTags(userId: string) {
+  updateTag(cacheTags.userMemories(userId));
+  updateTag(cacheTags.userDiary(userId));
+  updateTag(cacheTags.userProfile(userId));
+  updateTag(cacheTags.homeFeed(userId));
+}
+
+function updateVaultTags(userId: string) {
+  updateTag(cacheTags.userVault(userId));
+}
+
+function updateMemoryTags(memoryId: string) {
+  updateTag(cacheTags.memory(memoryId));
+  revalidateTag(cacheTags.memoryEngagement(memoryId), "max");
+}
+
 /* -------------------------------------------------------------------------- */
 /* CREATE MEMORY ACTION                                                       */
 /* -------------------------------------------------------------------------- */
@@ -455,15 +472,12 @@ export async function createMemoryAction(
     }
   }
 
-  revalidatePath("/home");
-  revalidatePath("/dashboard");
-  revalidatePath("/calendar");
-  revalidatePath("/timeline");
-  revalidatePath("/profile");
-  revalidatePath("/vault");
-  revalidatePath("/create/memory");
-  revalidatePath(`/diary/day/${entryDate}`);
-  revalidatePath(`/memory/${memory.id}`);
+  updateUserContentTags(user.id);
+  updateMemoryTags(memory.id);
+
+  if (privacy === "vault") {
+    updateVaultTags(user.id);
+  }
 
   redirect(privacy === "vault" ? "/vault" : `/diary/day/${entryDate}`);
 }
@@ -655,12 +669,9 @@ export async function createVaultEntryAction(
     }
   }
 
-  revalidatePath("/home");
-  revalidatePath("/dashboard");
-  revalidatePath("/calendar");
-  revalidatePath("/timeline");
-  revalidatePath("/vault");
-  revalidatePath(`/diary/day/${entryDate}`);
+  updateUserContentTags(user.id);
+  updateVaultTags(user.id);
+  updateMemoryTags(vaultEntry.id);
 
   redirect("/vault");
 }
@@ -935,21 +946,12 @@ export async function editMemoryAction(
     });
   }
 
-  revalidatePath("/home");
-  revalidatePath("/dashboard");
-  revalidatePath("/calendar");
-  revalidatePath("/timeline");
-  revalidatePath("/profile");
-  revalidatePath("/vault");
-  revalidatePath(`/memory/${editData.memoryId}`);
-  revalidatePath(`/memory/${editData.memoryId}/edit`);
-  revalidatePath(`/vault/${editData.memoryId}/edit`);
+  updateUserContentTags(user.id);
+  updateMemoryTags(editData.memoryId);
 
-  if (memory.entry_date) {
-    revalidatePath(`/diary/day/${memory.entry_date}`);
+  if (memory.privacy === "vault" || editData.privacy === "vault") {
+    updateVaultTags(user.id);
   }
-
-  revalidatePath(`/diary/day/${editData.entryDate}`);
 
   redirect(
     editData.privacy === "vault"
@@ -1063,15 +1065,11 @@ export async function deleteMemoryAction(memoryId: string): Promise<{
     });
   }
 
-  revalidatePath("/home");
-  revalidatePath("/dashboard");
-  revalidatePath("/calendar");
-  revalidatePath("/timeline");
-  revalidatePath("/profile");
-  revalidatePath("/vault");
+  updateUserContentTags(user.id);
+  updateMemoryTags(memoryId);
 
-  if (memory.entry_date) {
-    revalidatePath(`/diary/day/${memory.entry_date}`);
+  if (memory.privacy === "vault") {
+    updateVaultTags(user.id);
   }
 
   return {

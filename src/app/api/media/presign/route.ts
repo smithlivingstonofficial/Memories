@@ -4,8 +4,6 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createClient } from "@/lib/supabase/server";
 import { R2_BUCKET, R2_PUBLIC_URL, r2Client } from "@/lib/r2";
 
-export const runtime = "nodejs";
-
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
 const allowedTypes = {

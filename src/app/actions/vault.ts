@@ -1,9 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { cacheTags } from "@/lib/cache-tags";
 import {
   clearVaultUnlockSession,
   createPinHash,
@@ -75,7 +76,7 @@ export async function setVaultPinAction(
   }
 
   await createVaultUnlockSession(supabase, user.id);
-  revalidateVaultPaths();
+  revalidateVaultPaths(user.id);
 
   return {
     success: true,
@@ -117,7 +118,7 @@ export async function verifyVaultPinAction(
   }
 
   await createVaultUnlockSession(supabase, user.id);
-  revalidateVaultPaths();
+  revalidateVaultPaths(user.id);
 
   return {
     success: true,
@@ -135,12 +136,16 @@ export async function lockVaultAction() {
     await clearVaultUnlockSession(supabase, user.id);
   }
 
-  revalidateVaultPaths();
+  revalidateVaultPaths(user?.id);
   redirect("/vault");
 }
 
-function revalidateVaultPaths() {
-  revalidatePath("/vault");
+function revalidateVaultPaths(userId?: string) {
+  if (userId) {
+    updateTag(cacheTags.userVault(userId));
+    updateTag(cacheTags.userDiary(userId));
+  }
+
   revalidatePath("/create/memory");
   revalidatePath("/create/vault");
   revalidatePath("/timeline");

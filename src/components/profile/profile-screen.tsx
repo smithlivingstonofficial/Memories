@@ -25,21 +25,21 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
 
   return (
     <div className="mx-auto w-full max-w-[1500px] space-y-5">
-      <section className="mem-card overflow-hidden rounded-[2rem]">
-        <div className="relative h-52 overflow-hidden sm:h-64">
+      <section className="mem-card relative isolate overflow-hidden rounded-[2rem]">
+        <div className="relative z-0 h-52 overflow-hidden sm:h-64">
           {profile.coverUrl ? (
             <img
               src={profile.coverUrl}
               alt={`${profile.fullName} cover`}
-              className="h-full w-full object-cover"
+              className="relative z-0 h-full w-full object-cover"
             />
           ) : (
-            <div className="h-full w-full [background:var(--vault-hero)]" />
+            <div className="relative z-0 h-full w-full [background:var(--vault-hero)]" />
           )}
 
-          <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
+          <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
 
-          <div className="absolute right-4 top-4 flex gap-2">
+          <div className="absolute right-4 top-4 z-30 flex gap-2">
             <Link
               href="/settings/profile"
               className="flex h-10 items-center gap-2 rounded-2xl border border-white/30 bg-white/80 px-4 text-sm font-semibold text-slate-800 shadow-sm backdrop-blur-xl transition hover:bg-white"
@@ -58,28 +58,57 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
           </div>
         </div>
 
-        <div className="px-5 pb-5 sm:px-6 sm:pb-6">
-          <div className="-mt-12 flex flex-col gap-5 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-              <Avatar
-                fullName={profile.fullName}
-                avatarUrl={profile.avatarUrl}
-              />
+        <div className="relative z-20 border-t border-[var(--app-border)] bg-[var(--app-surface)] px-5 pb-5 sm:px-6 sm:pb-6">
+          <div className="grid gap-5 pt-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="-mt-16 sm:-mt-20">
+                <Avatar
+                  fullName={profile.fullName}
+                  avatarUrl={profile.avatarUrl}
+                />
+              </div>
 
-              <div className="min-w-0 pb-1">
-                <h1 className="font-brand text-3xl font-semibold tracking-[-0.055em] text-[var(--app-text)] sm:text-4xl">
-                  {profile.fullName}
-                </h1>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="font-brand text-3xl font-semibold text-[var(--app-text)] sm:text-4xl">
+                    {profile.fullName}
+                  </h1>
+
+                  <span className="inline-flex rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
+                    {profile.accountVisibility === "private"
+                      ? "Private account"
+                      : "Public account"}
+                  </span>
+                </div>
 
                 <p className="mt-1 text-sm font-medium text-[var(--app-muted)]">
                   @{profile.username}
                 </p>
 
-                <span className="mt-3 inline-flex rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
-                  {profile.accountVisibility === "private"
-                    ? "Private account"
-                    : "Public account"}
-                </span>
+                <ProfileInlineStats
+                  items={[
+                    {
+                      value: stats.memories,
+                      singular: "Memory",
+                      plural: "Memories",
+                    },
+                    {
+                      value: stats.followers,
+                      singular: "Follower",
+                      plural: "Followers",
+                    },
+                    {
+                      value: stats.following,
+                      singular: "Following",
+                      plural: "Following",
+                    },
+                    {
+                      value: stats.media,
+                      singular: "Media",
+                      plural: "Media",
+                    },
+                  ]}
+                />
 
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--app-muted)]">
                   {profile.bio ||
@@ -88,29 +117,22 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
               <Link
                 href={`/u/${profile.username}`}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-5 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-5 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
               >
                 Public profile
               </Link>
 
               <Link
                 href="/create"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(99,102,241,0.25)] transition hover:bg-[var(--app-accent-hover)]"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(99,102,241,0.25)] transition hover:bg-[var(--app-accent-hover)]"
               >
                 Create
                 <Sparkles size={17} />
               </Link>
             </div>
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <ProfileStat label="Memories" value={stats.memories.toString()} />
-            <ProfileStat label="Followers" value={stats.followers.toString()} />
-            <ProfileStat label="Following" value={stats.following.toString()} />
-            <ProfileStat label="Media" value={stats.media.toString()} />
           </div>
         </div>
       </section>
@@ -256,27 +278,40 @@ function Avatar({
       <img
         src={avatarUrl}
         alt={fullName}
-        className="size-28 shrink-0 rounded-[2rem] border-4 border-[var(--app-surface-strong)] object-cover shadow-[0_22px_60px_var(--app-shadow)] sm:size-32"
+        className="relative z-20 size-28 shrink-0 rounded-[2rem] border-4 border-[var(--app-surface-strong)] object-cover shadow-[0_22px_60px_var(--app-shadow)] sm:size-32"
       />
     );
   }
 
   return (
-    <div className="flex size-28 shrink-0 items-center justify-center rounded-[2rem] border-4 border-[var(--app-surface-strong)] bg-[var(--app-soft)] font-brand text-3xl font-semibold text-[var(--app-accent)] shadow-[0_22px_60px_var(--app-shadow)] sm:size-32">
+    <div className="relative z-20 flex size-28 shrink-0 items-center justify-center rounded-[2rem] border-4 border-[var(--app-surface-strong)] bg-[var(--app-soft)] font-brand text-3xl font-semibold text-[var(--app-accent)] shadow-[0_22px_60px_var(--app-shadow)] sm:size-32">
       {initials}
     </div>
   );
 }
 
-function ProfileStat({ label, value }: { label: string; value: string }) {
+function ProfileInlineStats({
+  items,
+}: {
+  items: Array<{
+    value: number;
+    singular: string;
+    plural: string;
+  }>;
+}) {
   return (
-    <div className="rounded-[1.5rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 py-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
-        {label}
-      </p>
-      <p className="mt-1 font-brand text-2xl font-semibold tracking-[-0.05em] text-[var(--app-text)]">
-        {value}
-      </p>
+    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[var(--app-muted)]">
+      {items.map((item) => (
+        <span
+          key={item.plural}
+          className="inline-flex items-baseline gap-1.5 rounded-full border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-3 py-1.5"
+        >
+          <strong className="font-brand text-base font-semibold text-[var(--app-text)]">
+            {item.value}
+          </strong>
+          <span>{item.value === 1 ? item.singular : item.plural}</span>
+        </span>
+      ))}
     </div>
   );
 }

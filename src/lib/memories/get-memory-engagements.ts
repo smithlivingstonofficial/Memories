@@ -11,6 +11,13 @@ export type MemoryEngagementData = {
   canEngage: boolean;
 };
 
+type EngagementSummaryRow = {
+  memory_id: string;
+  like_count: number;
+  reflection_count: number;
+  viewer_has_liked: boolean;
+};
+
 export async function getMemoryEngagementMap({
   supabase,
   memoryIds,
@@ -32,6 +39,28 @@ export async function getMemoryEngagementMap({
   }
 
   if (memoryIds.length === 0) return map;
+
+  const { data: summaryRows, error: summaryError } = await supabase.rpc(
+    "get_memory_engagement_summary",
+    {
+      memory_ids: memoryIds,
+      viewer: viewerId,
+    }
+  );
+
+  if (!summaryError && summaryRows) {
+    for (const row of summaryRows as EngagementSummaryRow[]) {
+      const existing = map.get(row.memory_id);
+
+      if (!existing) continue;
+
+      existing.likeCount = Number(row.like_count ?? 0);
+      existing.reflectionCount = Number(row.reflection_count ?? 0);
+      existing.viewerHasLiked = Boolean(row.viewer_has_liked);
+    }
+
+    return map;
+  }
 
   const { data: likes } = await supabase
     .from("memory_likes")

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import {
   useActionState,
   useEffect,
@@ -35,7 +34,6 @@ export function MemoryEngagementBar({
   initiallyLiked,
   canEngage,
 }: MemoryEngagementBarProps) {
-  const router = useRouter();
   const formRef = useRef<HTMLFormElement | null>(null);
 
   const [liked, setLiked] = useState(initiallyLiked);
@@ -45,6 +43,7 @@ export function MemoryEngagementBar({
   );
   const [reflectionOpen, setReflectionOpen] = useState(false);
   const [likeMessage, setLikeMessage] = useState("");
+  const [likeBurst, setLikeBurst] = useState(0);
   const [isLikePending, startLikeTransition] = useTransition();
 
   const [reflectionState, reflectionAction, reflectionPending] = useActionState(
@@ -53,21 +52,30 @@ export function MemoryEngagementBar({
   );
 
   function toggleLike() {
-    if (!canEngage) return;
+    if (!canEngage || isLikePending) return;
 
     setLikeMessage("");
+    setLikeBurst((current) => current + 1);
+
+    const previousLiked = liked;
+    const previousLikeCount = likeCount;
+    const nextLiked = !previousLiked;
+
+    setLiked(nextLiked);
+    setLikeCount(Math.max(0, previousLikeCount + (nextLiked ? 1 : -1)));
 
     startLikeTransition(async () => {
       const result = await toggleMemoryLikeAction(memoryId);
 
       if (!result.success) {
+        setLiked(previousLiked);
+        setLikeCount(previousLikeCount);
         setLikeMessage(result.message);
         return;
       }
 
       setLiked(Boolean(result.liked));
       setLikeCount(result.likeCount ?? 0);
-      router.refresh();
     });
   }
 
@@ -76,14 +84,13 @@ export function MemoryEngagementBar({
       const timeoutId = window.setTimeout(() => {
         setReflectionCount((current) => current + 1);
         formRef.current?.reset();
-        router.refresh();
       }, 0);
 
       return () => {
         window.clearTimeout(timeoutId);
       };
     }
-  }, [reflectionState.success, reflectionState.reflectionId, router]);
+  }, [reflectionState.success, reflectionState.reflectionId]);
 
   return (
     <div className="mt-5 border-t border-[var(--app-border)] pt-4">
@@ -93,15 +100,31 @@ export function MemoryEngagementBar({
             type="button"
             onClick={toggleLike}
             disabled={!canEngage || isLikePending}
-            className={`flex items-center gap-2 transition disabled:opacity-50 ${
+            className={`group relative flex items-center gap-2 transition disabled:opacity-70 ${
               liked ? "text-rose-500" : "hover:text-rose-500"
             }`}
           >
-            {isLikePending ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <Heart size={18} fill={liked ? "currentColor" : "none"} />
+            {liked && (
+              <span
+                key={likeBurst}
+                className="pointer-events-none absolute -left-1 top-1/2 size-7 -translate-y-1/2 rounded-full bg-rose-500/20 animate-[ping_600ms_ease-out_1]"
+              />
             )}
+
+            <span
+              key={`${liked}-${likeBurst}`}
+              className={`relative grid size-5 place-items-center transition-transform ${
+                liked
+                  ? "animate-[heart-pop_420ms_cubic-bezier(0.2,0.8,0.2,1)_1]"
+                  : "group-active:scale-90"
+              }`}
+            >
+              <Heart
+                size={18}
+                fill={liked ? "currentColor" : "none"}
+                className="transition-transform"
+              />
+            </span>
 
             <span className="text-xs font-medium">
               {likeCount > 0 ? likeCount : "Like"}

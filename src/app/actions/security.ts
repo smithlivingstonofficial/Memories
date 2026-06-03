@@ -2,10 +2,11 @@
 
 import { randomBytes } from "crypto";
 import { cookies, headers } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { cacheTags } from "@/lib/cache-tags";
 import {
   createPinHash,
   createVaultUnlockSession,
@@ -200,6 +201,7 @@ export async function changeAccountPasswordAction(
     .update({ password_set: true })
     .eq("id", user.id);
 
+  updateTag(cacheTags.userProfile(user.id));
   revalidatePath("/settings");
   revalidatePath("/settings/security");
 
@@ -264,7 +266,8 @@ export async function resetVaultPinWithAccountPasswordAction(
   await supabase.from("vault_unlock_sessions").delete().eq("user_id", user.id);
   await createVaultUnlockSession(supabase, user.id);
 
-  revalidatePath("/vault");
+  updateTag(cacheTags.userVault(user.id));
+  updateTag(cacheTags.userDiary(user.id));
   revalidatePath("/create/vault");
   revalidatePath("/settings/security");
 

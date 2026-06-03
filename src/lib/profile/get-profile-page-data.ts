@@ -51,6 +51,16 @@ type MemoryMediaRow = {
   asset: MediaAssetRow | MediaAssetRow[] | null;
 };
 
+type ProfileSummaryRow = {
+  memories_count: number;
+  vault_count: number;
+  media_count: number;
+  followers_count: number;
+  following_count: number;
+  pending_requests_count: number;
+  sent_requests_count: number;
+};
+
 export type ProfilePageData = {
   profile: {
     id: string;
@@ -146,56 +156,81 @@ export async function getProfilePageData({
     accountVisibility: profileRow?.account_visibility ?? "public",
   };
 
-  const { count: memoriesCount } = await supabase
-    .from("memories")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", userId)
-    .neq("privacy", "vault");
+  const { data: profileSummaryRows, error: profileSummaryError } =
+    await supabase.rpc("get_profile_summary", {
+      target_user: userId,
+    });
 
-  const { count: vaultCount } = await supabase
-    .from("memories")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", userId)
-    .eq("privacy", "vault");
+  let summaryRow = !profileSummaryError
+    ? ((profileSummaryRows ?? [])[0] as ProfileSummaryRow | undefined)
+    : undefined;
 
-  const { count: mediaCount } = await supabase
-    .from("media_assets")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", userId)
-    .eq("upload_status", "uploaded");
+  if (!summaryRow) {
+    const [
+      memoriesResult,
+      vaultResult,
+      mediaResult,
+      followersResult,
+      followingResult,
+      pendingRequestsResult,
+      sentRequestsResult,
+    ] = await Promise.all([
+      supabase
+        .from("memories")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_id", userId)
+        .neq("privacy", "vault"),
+      supabase
+        .from("memories")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_id", userId)
+        .eq("privacy", "vault"),
+      supabase
+        .from("media_assets")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_id", userId)
+        .eq("upload_status", "uploaded"),
+      supabase
+        .from("user_follows")
+        .select("id", { count: "exact", head: true })
+        .eq("following_id", userId)
+        .eq("status", "accepted"),
+      supabase
+        .from("user_follows")
+        .select("id", { count: "exact", head: true })
+        .eq("follower_id", userId)
+        .eq("status", "accepted"),
+      supabase
+        .from("user_follows")
+        .select("id", { count: "exact", head: true })
+        .eq("following_id", userId)
+        .eq("status", "pending"),
+      supabase
+        .from("user_follows")
+        .select("id", { count: "exact", head: true })
+        .eq("follower_id", userId)
+        .eq("status", "pending"),
+    ]);
 
-  const { count: followersCount } = await supabase
-    .from("user_follows")
-    .select("id", { count: "exact", head: true })
-    .eq("following_id", userId)
-    .eq("status", "accepted");
-
-  const { count: followingCount } = await supabase
-    .from("user_follows")
-    .select("id", { count: "exact", head: true })
-    .eq("follower_id", userId)
-    .eq("status", "accepted");
-
-  const { count: pendingRequestsCount } = await supabase
-    .from("user_follows")
-    .select("id", { count: "exact", head: true })
-    .eq("following_id", userId)
-    .eq("status", "pending");
-
-  const { count: sentRequestsCount } = await supabase
-    .from("user_follows")
-    .select("id", { count: "exact", head: true })
-    .eq("follower_id", userId)
-    .eq("status", "pending");
+    summaryRow = {
+      memories_count: memoriesResult.count ?? 0,
+      vault_count: vaultResult.count ?? 0,
+      media_count: mediaResult.count ?? 0,
+      followers_count: followersResult.count ?? 0,
+      following_count: followingResult.count ?? 0,
+      pending_requests_count: pendingRequestsResult.count ?? 0,
+      sent_requests_count: sentRequestsResult.count ?? 0,
+    };
+  }
 
   const stats = {
-    memories: memoriesCount ?? 0,
-    vault: vaultCount ?? 0,
-    media: mediaCount ?? 0,
-    followers: followersCount ?? 0,
-    following: followingCount ?? 0,
-    pendingRequests: pendingRequestsCount ?? 0,
-    sentRequests: sentRequestsCount ?? 0,
+    memories: Number(summaryRow.memories_count ?? 0),
+    vault: Number(summaryRow.vault_count ?? 0),
+    media: Number(summaryRow.media_count ?? 0),
+    followers: Number(summaryRow.followers_count ?? 0),
+    following: Number(summaryRow.following_count ?? 0),
+    pendingRequests: Number(summaryRow.pending_requests_count ?? 0),
+    sentRequests: Number(summaryRow.sent_requests_count ?? 0),
   };
 
   const { data: memories, error: memoriesError } = await supabase

@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { cleanupExpiredMoments } from "@/lib/moments/cleanup-expired-moments";
 
-export const runtime = "nodejs";
-
 function isAuthorized(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
 

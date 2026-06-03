@@ -1,8 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateTag, updateTag } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { cacheTags } from "@/lib/cache-tags";
 
 export type EngagementActionResult = {
   success: boolean;
@@ -73,10 +74,8 @@ async function canEngageWithMemory({
 }
 
 async function revalidateMemoryPages(memoryId: string) {
-  revalidatePath("/home");
-  revalidatePath("/profile");
-  revalidatePath("/discover");
-  revalidatePath(`/memory/${memoryId}`);
+  updateTag(cacheTags.memory(memoryId));
+  updateTag(cacheTags.memoryEngagement(memoryId));
 }
 
 export async function toggleMemoryLikeAction(
@@ -148,6 +147,8 @@ export async function toggleMemoryLikeAction(
     .eq("memory_id", memoryId);
 
   await revalidateMemoryPages(memoryId);
+  revalidateTag(cacheTags.homeFeed(user.id), "max");
+  revalidateTag(cacheTags.userMemories(user.id), "max");
 
   return {
     success: true,
@@ -221,6 +222,8 @@ export async function createReflectionAction(
   }
 
   await revalidateMemoryPages(memoryId);
+  revalidateTag(cacheTags.homeFeed(user.id), "max");
+  revalidateTag(cacheTags.userMemories(user.id), "max");
 
   return {
     success: true,
@@ -307,9 +310,10 @@ export async function deleteReflectionAction(reflectionId: string): Promise<{
     .select("id", { count: "exact", head: true })
     .eq("memory_id", reflection.memory_id);
 
-  revalidatePath("/home");
-  revalidatePath("/profile");
-  revalidatePath(`/memory/${reflection.memory_id}`);
+  updateTag(cacheTags.memory(reflection.memory_id));
+  updateTag(cacheTags.memoryEngagement(reflection.memory_id));
+  revalidateTag(cacheTags.homeFeed(user.id), "max");
+  revalidateTag(cacheTags.userMemories(user.id), "max");
 
   return {
     success: true,

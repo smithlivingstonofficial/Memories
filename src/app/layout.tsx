@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Plus_Jakarta_Sans, Sora } from "next/font/google";
+import { Suspense } from "react";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { RouteLoadingShell } from "@/components/layout/route-loading-shell";
 import { getPublicSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 
@@ -130,7 +132,9 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: themeScript }}
         />
 
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <Suspense fallback={<RouteLoadingShell />}>{children}</Suspense>
+        </ThemeProvider>
       </body>
     </html>
   );

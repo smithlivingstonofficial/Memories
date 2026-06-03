@@ -3,9 +3,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { updateTag } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { deleteMediaAssetsCompletely } from "@/lib/media/delete-media";
+import { cacheTags } from "@/lib/cache-tags";
 
 export type UpdateProfileState = {
   message?: string;
@@ -264,6 +266,10 @@ export async function updateProfileAction(
       assetIds: cleanupAssetIds,
     });
   }
+
+  updateTag(cacheTags.userProfile(user.id));
+  updateTag(cacheTags.userMemories(user.id));
+  updateTag(cacheTags.homeFeed(user.id));
 
   redirect("/profile");
 }

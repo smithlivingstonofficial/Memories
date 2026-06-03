@@ -3,8 +3,6 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createClient } from "@/lib/supabase/server";
 
-export const runtime = "nodejs";
-
 type UploadUrlBody = {
   fileName?: string;
   contentType?: string;
