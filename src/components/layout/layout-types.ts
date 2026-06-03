@@ -12,6 +12,7 @@ export type NavItem = {
   href: string;
   icon: LucideIcon;
   match?: string[];
+  badge?: "Soon";
 };
 
 export type NavGroup = {

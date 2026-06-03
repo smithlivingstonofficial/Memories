@@ -37,7 +37,7 @@ export const desktopNavGroups: NavGroup[] = [
       { label: "Timeline", href: "/timeline", icon: Clock3 },
       { label: "Vault", href: "/vault", icon: LockKeyhole },
       { label: "On This Day", href: "/on-this-day", icon: Sparkles },
-      { label: "Keepsakes", href: "/keepsakes", icon: Bookmark },
+      { label: "Keepsakes", href: "/keepsakes", icon: Bookmark, badge: "Soon" },
     ],
   },
   {
@@ -45,7 +45,7 @@ export const desktopNavGroups: NavGroup[] = [
     items: [
       { label: "Discover", href: "/discover", icon: Compass },
       { label: "Messages", href: "/messages", icon: MessageCircle },
-      { label: "Inner Circle", href: "/inner-circle", icon: Users },
+      { label: "Inner Circle", href: "/inner-circle", icon: Users, badge: "Soon" },
       { label: "Requests", href: "/requests", icon: UserCheck },
     ],
   },
@@ -77,7 +77,7 @@ export const mobileMenuGroups: NavGroup[] = [
       { label: "Timeline", href: "/timeline", icon: Clock3 },
       { label: "Vault", href: "/vault", icon: LockKeyhole },
       { label: "On This Day", href: "/on-this-day", icon: Sparkles },
-      { label: "Keepsakes", href: "/keepsakes", icon: Bookmark },
+      { label: "Keepsakes", href: "/keepsakes", icon: Bookmark, badge: "Soon" },
     ],
   },
   {
@@ -85,7 +85,7 @@ export const mobileMenuGroups: NavGroup[] = [
     items: [
       { label: "Discover", href: "/discover", icon: Compass },
       { label: "Messages", href: "/messages", icon: MessageCircle },
-      { label: "Inner Circle", href: "/inner-circle", icon: Users },
+      { label: "Inner Circle", href: "/inner-circle", icon: Users, badge: "Soon" },
       { label: "Requests", href: "/requests", icon: UserCheck },
     ],
   },

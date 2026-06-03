@@ -10,6 +10,8 @@ import {
   Plus,
   LockKeyhole,
   Sparkles,
+  Clock3,
+  LayoutDashboard,
 } from "lucide-react";
 import { deleteContentDraftAction } from "@/app/actions/drafts";
 import { DeleteMemoryButton } from "@/components/memory/delete-memory-button";
@@ -370,6 +372,36 @@ function DesktopSideArea() {
           </div>
           <span className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
             Vault
+          </span>
+        </div>
+        <Plus size={18} className="text-[var(--app-muted)]" />
+      </Link>
+
+      <Link
+        href="/timeline"
+        className="mem-card flex items-center justify-between rounded-[1.6rem] p-4 transition hover:border-[var(--app-accent)]"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+            <Clock3 size={18} />
+          </div>
+          <span className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+            Timeline
+          </span>
+        </div>
+        <Plus size={18} className="text-[var(--app-muted)]" />
+      </Link>
+
+      <Link
+        href="/dashboard"
+        className="mem-card flex items-center justify-between rounded-[1.6rem] p-4 transition hover:border-[var(--app-accent)]"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+            <LayoutDashboard size={18} />
+          </div>
+          <span className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+            Dashboard
           </span>
         </div>
         <Plus size={18} className="text-[var(--app-muted)]" />
