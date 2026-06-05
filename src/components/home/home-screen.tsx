@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useRef, useState, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   Camera,
@@ -20,6 +21,7 @@ import {
   getQuickMemoryDraftKey,
   type QuickMemoryDraft,
 } from "@/lib/quick-memory-draft";
+import { saveCapturedMomentFile } from "@/lib/moments/captured-moment-media";
 import type { FeedMemory } from "@/types/memory";
 import type { ActiveMoment } from "@/types/moment";
 import type { HomeDraft } from "@/types/draft";
@@ -97,18 +99,57 @@ function HomeShortcuts() {
         </span>
       </Link>
 
-      <Link
-        href="/create/moment"
-        className="mem-card flex min-w-0 items-center gap-3 rounded-[1.25rem] p-3 transition hover:border-[var(--app-accent)] active:scale-[0.99] sm:rounded-[1.5rem] sm:p-4"
+      <CaptureMomentShortcut />
+    </section>
+  );
+}
+
+function CaptureMomentShortcut() {
+  const router = useRouter();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [isPreparing, setIsPreparing] = useState(false);
+
+  async function handleCapture(file: File | null) {
+    if (!file) return;
+
+    setIsPreparing(true);
+
+    try {
+      await saveCapturedMomentFile(file);
+      router.push("/create/moment?capture=1");
+    } catch {
+      router.push("/create/moment");
+    }
+  }
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(event) => {
+          void handleCapture(event.target.files?.[0] ?? null);
+          event.currentTarget.value = "";
+        }}
+      />
+
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={isPreparing}
+        className="mem-card flex min-w-0 items-center gap-3 rounded-[1.25rem] p-3 text-left transition hover:border-[var(--app-accent)] active:scale-[0.99] disabled:cursor-wait disabled:opacity-70 sm:rounded-[1.5rem] sm:p-4"
       >
         <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
           <Camera size={18} />
         </div>
         <span className="min-w-0 text-sm font-semibold leading-tight text-[var(--app-text)] sm:text-base">
-          Capture Moment
+          {isPreparing ? "Opening..." : "Capture Moment"}
         </span>
-      </Link>
-    </section>
+      </button>
+    </>
   );
 }
 

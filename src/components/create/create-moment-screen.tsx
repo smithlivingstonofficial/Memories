@@ -29,6 +29,7 @@ import {
   extractJpegGps,
   prepareImageForUpload,
 } from "@/lib/media/client-media-processing";
+import { takeCapturedMomentFile } from "@/lib/moments/captured-moment-media";
 import { MEMORY_MOODS } from "@/lib/moods";
 import { cn } from "@/lib/utils";
 import {
@@ -114,6 +115,7 @@ export function CreateMomentScreen({
 
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const capturedMediaLoadedRef = useRef(false);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState(
@@ -231,6 +233,32 @@ export function CreateMomentScreen({
       }
     };
   }, [previewUrl]);
+
+  useEffect(() => {
+    if (capturedMediaLoadedRef.current) return;
+    capturedMediaLoadedRef.current = true;
+
+    let cancelled = false;
+
+    async function loadCapturedMedia() {
+      try {
+        const file = await takeCapturedMomentFile();
+        if (!file || cancelled) return;
+
+        await handleMediaFile(file);
+      } catch {
+        if (!cancelled) {
+          setMessage("Unable to load captured media.");
+        }
+      }
+    }
+
+    void loadCapturedMedia();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleMediaFile(file: File | null) {
     setMessage("");
