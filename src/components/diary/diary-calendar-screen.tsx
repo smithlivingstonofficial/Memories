@@ -38,39 +38,35 @@ export function DiaryCalendarScreen({ data }: DiaryCalendarScreenProps) {
   });
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-5">
-      <section className="relative overflow-hidden rounded-[2rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-5 shadow-[0_24px_80px_var(--app-shadow)] backdrop-blur-2xl sm:p-7">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(99,102,241,0.20),transparent_30%),radial-gradient(circle_at_92%_95%,rgba(255,228,230,0.28),transparent_34%)]" />
+    <div className="mx-auto w-full max-w-[1500px] space-y-4 sm:space-y-5">
+      <section className="relative overflow-hidden rounded-[1.5rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-3.5 shadow-[0_18px_60px_var(--app-shadow)] backdrop-blur-2xl sm:rounded-[1.8rem] sm:p-5">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_0%,rgba(99,102,241,0.18),transparent_28%),radial-gradient(circle_at_100%_100%,rgba(255,228,230,0.26),transparent_34%)]" />
 
-        <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--app-accent)]">
+        <div className="relative grid gap-3 sm:gap-4 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-center">
+          <div className="min-w-0">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
               <CalendarDays size={14} />
-              Diary calendar
+              Calendar
             </div>
 
-            <h1 className="font-brand text-3xl font-semibold tracking-[-0.06em] text-[var(--app-text)] sm:text-5xl">
+            <h1 className="font-brand truncate text-2xl font-semibold leading-[1.08] tracking-[-0.055em] text-[var(--app-text)] sm:text-4xl">
               {data.monthLabel}
             </h1>
-
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--app-muted)] sm:text-base">
-              See your private diary days, moods, media, and Vault entries in
-              one calm monthly view.
-            </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[360px]">
+          <div className="grid grid-cols-2 gap-3">
             <Link
               href={`/calendar?month=${data.previousMonth.slice(0, 7)}`}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-5 text-sm font-semibold text-[var(--app-muted)] transition hover:border-[var(--app-accent)] hover:text-[var(--app-text)]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 text-sm font-semibold text-[var(--app-muted)] transition hover:border-[var(--app-accent)] hover:text-[var(--app-text)] sm:h-12 sm:px-5"
             >
               <ArrowLeft size={17} />
-              Previous
+              <span className="hidden sm:inline">Previous</span>
+              <span className="sm:hidden">Prev</span>
             </Link>
 
             <Link
               href={`/calendar?month=${data.nextMonth.slice(0, 7)}`}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white transition hover:opacity-90"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-4 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(99,102,241,0.22)] transition hover:opacity-90 sm:h-12 sm:px-5"
             >
               Next
               <ArrowRight size={17} />
@@ -78,7 +74,7 @@ export function DiaryCalendarScreen({ data }: DiaryCalendarScreenProps) {
           </div>
         </div>
 
-        <div className="relative mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="relative mt-3 grid grid-cols-2 gap-2.5 sm:mt-4 sm:gap-3 md:grid-cols-3 xl:grid-cols-5">
           <StatCard label="Active days" value={data.monthStats.activeDays} />
           <StatCard label="Entries" value={data.monthStats.totalEntries} />
           <StatCard label="Memories" value={data.monthStats.memoryCount} />
@@ -90,28 +86,25 @@ export function DiaryCalendarScreen({ data }: DiaryCalendarScreenProps) {
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
-        <div className="mem-card rounded-[2rem] p-4 sm:p-5">
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <section className="grid gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
+        <div className="mem-card rounded-[1.6rem] p-3 sm:rounded-[2rem] sm:p-5">
+          <div className="mb-3 flex flex-row items-center justify-between gap-3 sm:mb-4">
             <div>
-              <h2 className="font-brand text-2xl font-semibold tracking-[-0.05em] text-[var(--app-text)]">
+              <h2 className="font-brand text-xl font-semibold tracking-[-0.045em] text-[var(--app-text)] sm:text-2xl">
                 Month view
               </h2>
-              <p className="mt-1 text-sm text-[var(--app-muted)]">
-                Click a date to review entries from that day.
-              </p>
             </div>
 
             <Link
               href={`/calendar?month=${data.today.slice(0, 7)}&date=${data.today}`}
-              className="inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 text-sm font-semibold text-[var(--app-muted)] transition hover:border-[var(--app-accent)] hover:text-[var(--app-text)]"
+              className="inline-flex h-9 shrink-0 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-3 text-sm font-semibold text-[var(--app-muted)] transition hover:border-[var(--app-accent)] hover:text-[var(--app-text)] sm:h-10 sm:px-4"
             >
               Today
             </Link>
           </div>
 
           <div
-            className="grid gap-2"
+            className="grid gap-1.5 sm:gap-2"
             style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
           >
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
@@ -134,7 +127,7 @@ export function DiaryCalendarScreen({ data }: DiaryCalendarScreenProps) {
               ) : (
                 <div
                   key={`empty-${index}`}
-                  className="min-h-[86px] rounded-2xl border border-transparent lg:min-h-[118px]"
+                  className="min-h-[58px] rounded-2xl border border-transparent sm:min-h-[86px] lg:min-h-[118px]"
                 />
               )
             )}
@@ -147,10 +140,10 @@ export function DiaryCalendarScreen({ data }: DiaryCalendarScreenProps) {
           </div>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="space-y-4 sm:space-y-5">
           <SelectedDayPanel data={data} />
 
-          <section className="mem-card rounded-[2rem] p-5">
+          <section className="mem-card rounded-[1.6rem] p-4 sm:rounded-[2rem] sm:p-5">
             <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
               Quick actions
             </h2>
@@ -195,7 +188,7 @@ function CalendarDateCell({
     <Link
       href={`/calendar?month=${monthKey}&date=${cell.date}`}
       className={[
-        "group flex min-h-[86px] flex-col rounded-2xl border p-2 text-left transition lg:min-h-[118px] lg:p-3",
+        "group flex min-h-[58px] flex-col rounded-[1.1rem] border p-1.5 text-left transition sm:min-h-[86px] sm:rounded-2xl sm:p-2 lg:min-h-[118px] lg:p-3",
         cell.isSelected
           ? "border-[var(--app-accent)] bg-[var(--app-soft)] shadow-[0_16px_45px_var(--app-shadow)]"
           : cell.isToday
@@ -208,7 +201,7 @@ function CalendarDateCell({
       <div className="flex items-start justify-between gap-2">
         <span
           className={[
-            "text-sm font-semibold lg:text-base",
+            "text-sm font-semibold leading-none lg:text-base",
             cell.isSelected || cell.isToday
               ? "text-[var(--app-accent)]"
               : "text-[var(--app-text)]",
@@ -218,40 +211,40 @@ function CalendarDateCell({
         </span>
 
         {cell.day && (
-          <span className="rounded-full bg-[var(--app-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--app-accent)]">
+          <span className="rounded-full bg-[var(--app-soft)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--app-accent)] sm:px-2 sm:text-[10px]">
             {cell.day.totalEntries}
           </span>
         )}
       </div>
 
       {cell.day ? (
-        <div className="mt-auto pt-4">
+        <div className="mt-auto pt-2 sm:pt-4">
           <div className="mb-2 hidden text-xs font-medium text-[var(--app-muted)] lg:block">
             {cell.day.memoryCount > 0 && `${cell.day.memoryCount} memory`}
             {cell.day.memoryCount > 0 && cell.day.vaultCount > 0 && " • "}
             {cell.day.vaultCount > 0 && `${cell.day.vaultCount} vault`}
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
             {cell.day.moods.slice(0, 3).map((mood) => (
               <span
                 key={mood}
                 title={mood}
-                className="size-2 rounded-full bg-[var(--app-accent)]"
+                className="size-1.5 rounded-full bg-[var(--app-accent)] sm:size-2"
               />
             ))}
 
             {cell.day.hasMedia && (
               <span
                 title="Has media"
-                className="size-2 rounded-full bg-emerald-400"
+                className="size-1.5 rounded-full bg-emerald-400 sm:size-2"
               />
             )}
 
             {cell.day.hasVault && (
               <span
                 title="Has vault"
-                className="size-2 rounded-full bg-amber-400"
+                className="size-1.5 rounded-full bg-amber-400 sm:size-2"
               />
             )}
           </div>
@@ -267,14 +260,14 @@ function CalendarDateCell({
 
 function SelectedDayPanel({ data }: { data: DiaryCalendarPageData }) {
   return (
-    <section className="mem-card rounded-[2rem] p-5">
-      <div className="mb-5">
+    <section className="mem-card rounded-[1.6rem] p-4 sm:rounded-[2rem] sm:p-5">
+      <div className="mb-4 sm:mb-5">
         <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
           <Sparkles size={14} />
           Selected day
         </div>
 
-        <h2 className="font-brand text-2xl font-semibold tracking-[-0.05em] text-[var(--app-text)]">
+        <h2 className="font-brand text-2xl font-semibold leading-tight tracking-[-0.05em] text-[var(--app-text)]">
           {data.selectedDateLabel}
         </h2>
 
@@ -284,7 +277,7 @@ function SelectedDayPanel({ data }: { data: DiaryCalendarPageData }) {
       </div>
 
       {data.selectedDayEntries.length === 0 ? (
-        <div className="rounded-[1.7rem] border border-dashed border-[var(--app-border)] bg-[var(--app-surface-strong)] p-5 text-center">
+        <div className="rounded-[1.5rem] border border-dashed border-[var(--app-border)] bg-[var(--app-surface-strong)] p-5 text-center sm:rounded-[1.7rem]">
           <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-[1.4rem] bg-[var(--app-soft)] text-[var(--app-accent)]">
             <PenLine size={22} />
           </div>
@@ -321,7 +314,7 @@ function DayEntryCard({ entry }: { entry: DiaryDayEntry }) {
   return (
     <Link
       href={href}
-      className="block rounded-[1.5rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-4 transition hover:border-[var(--app-accent)]"
+      className="block rounded-[1.4rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-4 transition hover:border-[var(--app-accent)] sm:rounded-[1.5rem]"
     >
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -366,12 +359,12 @@ function DayEntryCard({ entry }: { entry: DiaryDayEntry }) {
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-[1.5rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-4">
-      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--app-muted)]">
+    <div className="rounded-[1.15rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-2.5 sm:rounded-[1.35rem] sm:p-3.5">
+      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--app-muted)] sm:text-[10px] sm:tracking-[0.16em]">
         {label}
       </p>
 
-      <p className="mt-2 font-brand text-2xl font-semibold tracking-[-0.05em] text-[var(--app-text)]">
+      <p className="mt-1 font-brand text-xl font-semibold tracking-[-0.05em] text-[var(--app-text)] sm:text-2xl">
         {value}
       </p>
     </div>

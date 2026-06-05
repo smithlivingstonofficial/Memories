@@ -43,14 +43,16 @@ export function SettingsScreen({ profile }: SettingsScreenProps) {
   const { preference, setTheme } = useTheme();
 
   return (
-    <div className="mx-auto grid w-full max-w-[1320px] gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="min-w-0 space-y-4">
-        <div className="mem-card rounded-[1.7rem] p-4 sm:p-5">
-          <div className="flex items-center gap-3">
+    <div className="mx-auto grid w-full max-w-[1500px] gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <section className="min-w-0 space-y-4 sm:space-y-5">
+        <div className="relative overflow-hidden rounded-[1.5rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-3.5 shadow-[0_18px_60px_var(--app-shadow)] backdrop-blur-2xl sm:rounded-[1.8rem] sm:p-5">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(99,102,241,0.18),transparent_30%),radial-gradient(circle_at_100%_100%,rgba(255,228,230,0.24),transparent_34%)]" />
+
+          <div className="relative flex items-center gap-3">
             <ProfileAvatar profile={profile} />
 
             <div className="min-w-0">
-              <h1 className="font-brand truncate text-2xl font-semibold tracking-[-0.05em] text-[var(--app-text)]">
+              <h1 className="font-brand truncate text-2xl font-semibold tracking-[-0.055em] text-[var(--app-text)] sm:text-4xl">
                 Settings
               </h1>
               <p className="truncate text-sm text-[var(--app-muted)]">
@@ -60,10 +62,10 @@ export function SettingsScreen({ profile }: SettingsScreenProps) {
           </div>
         </div>
 
-        <section className="mem-card rounded-[1.7rem] p-4 sm:p-5">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
-              <Palette size={18} />
+        <section className="mem-card rounded-[1.5rem] p-3.5 sm:rounded-[1.8rem] sm:p-5">
+          <div className="mb-3 flex items-center gap-3 sm:mb-4">
+            <div className="flex size-9 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)] sm:size-10">
+              <Palette size={17} />
             </div>
 
             <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
@@ -71,7 +73,7 @@ export function SettingsScreen({ profile }: SettingsScreenProps) {
             </h2>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-3 gap-2">
             {themeOptions.map((option) => {
               const Icon = option.icon;
               const active = preference === option.value;
@@ -82,21 +84,23 @@ export function SettingsScreen({ profile }: SettingsScreenProps) {
                   type="button"
                   onClick={() => setTheme(option.value)}
                   className={cn(
-                    "flex h-14 items-center gap-3 rounded-2xl border px-4 text-left transition",
+                    "flex h-11 min-w-0 items-center justify-center gap-2 rounded-2xl border px-2 text-center transition sm:h-12 sm:px-4",
                     active
                       ? "border-[var(--app-accent)] bg-[var(--app-soft)] text-[var(--app-accent)]"
                       : "border-[var(--app-border)] bg-[var(--app-surface-strong)] text-[var(--app-muted)] hover:text-[var(--app-text)]"
                   )}
                 >
-                  <Icon size={18} />
-                  <span className="text-sm font-semibold">{option.label}</span>
+                  <Icon size={17} />
+                  <span className="truncate text-xs font-semibold sm:text-sm">
+                    {option.label}
+                  </span>
                 </button>
               );
             })}
           </div>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-2">
+        <section className="grid gap-3 sm:grid-cols-2 sm:gap-4">
           <SettingsLink
             href="/settings/profile"
             icon={UserRound}
@@ -130,13 +134,13 @@ export function SettingsScreen({ profile }: SettingsScreenProps) {
         </section>
       </section>
 
-      <aside className="space-y-4">
-        <div className="mem-card rounded-[1.7rem] p-4 sm:p-5">
+      <aside className="space-y-4 sm:space-y-5">
+        <div className="mem-card rounded-[1.5rem] p-3.5 sm:rounded-[1.8rem] sm:p-5">
           <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
             Account
           </h2>
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-3 grid gap-2.5 sm:mt-4 sm:gap-3">
             <InfoRow label="Name" value={profile.fullName} />
             <InfoRow label="Username" value={`@${profile.username}`} />
             <InfoRow
@@ -158,13 +162,13 @@ function ProfileAvatar({ profile }: { profile: SettingsScreenProps["profile"] })
       <img
         src={profile.avatarUrl}
         alt={profile.fullName}
-        className="size-14 shrink-0 rounded-2xl object-cover"
+        className="size-12 shrink-0 rounded-2xl object-cover sm:size-14"
       />
     );
   }
 
   return (
-    <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-soft)] font-semibold text-[var(--app-accent)]">
+    <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-soft)] font-semibold text-[var(--app-accent)] sm:size-14">
       {profile.fullName[0] ?? "M"}
     </div>
   );
@@ -184,11 +188,11 @@ function SettingsLink({
   return (
     <Link
       href={href}
-      className="mem-card flex min-h-[96px] items-center justify-between rounded-[1.7rem] p-4 transition hover:border-[var(--app-accent)]"
+      className="mem-card flex min-h-[76px] items-center justify-between rounded-[1.5rem] p-3.5 transition hover:border-[var(--app-accent)] sm:min-h-[88px] sm:rounded-[1.7rem] sm:p-4"
     >
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
-          <Icon size={18} />
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)] sm:size-10">
+          <Icon size={17} />
         </div>
 
         <div className="min-w-0">
@@ -208,8 +212,8 @@ function SettingsLink({
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-3">
-      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--app-muted)]">
+    <div className="rounded-[1.15rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-2.5 sm:rounded-2xl sm:p-3">
+      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--app-muted)] sm:text-[10px] sm:tracking-[0.16em]">
         {label}
       </p>
       <p className="mt-1 truncate text-sm font-semibold text-[var(--app-text)]">

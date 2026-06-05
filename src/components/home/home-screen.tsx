@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import {
   CalendarDays,
+  Camera,
   ImagePlus,
   MoreHorizontal,
   PenLine,
   Plus,
   LockKeyhole,
-  Sparkles,
   Clock3,
   LayoutDashboard,
 } from "lucide-react";
@@ -46,46 +46,15 @@ export function HomeScreen({
   drafts,
   currentUserId,
 }: HomeScreenProps) {
-  const todayLabel = new Date().toLocaleDateString("en-IN", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-
   return (
-    <div className="mx-auto grid w-full max-w-[1500px] gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="mx-auto grid w-full max-w-[1500px] gap-4 overflow-x-hidden xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0 space-y-3 sm:space-y-4">
-        <section className="mem-card rounded-[1.35rem] p-4 sm:rounded-[2rem] sm:p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <span className="mb-2 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
-                <Sparkles size={14} />
-                {todayLabel}
-              </span>
-
-              <h1 className="font-brand text-3xl font-semibold leading-tight text-[var(--app-text)] sm:text-4xl">
-                Home
-              </h1>
-
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--app-muted)]">
-                Your active moments, quick draft, and latest shared memories.
-              </p>
-            </div>
-
-            <Link
-              href="/create"
-              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(99,102,241,0.25)] transition hover:bg-[var(--app-accent-hover)]"
-            >
-              Create
-              <Plus size={17} />
-            </Link>
-          </div>
-        </section>
-
         <MomentsTray
           activeMoments={activeMoments}
           currentUserId={currentUserId}
         />
+
+        <HomeShortcuts />
 
         <QuickMemoryCapture currentUserId={currentUserId} />
 
@@ -110,6 +79,36 @@ export function HomeScreen({
         <DesktopSideArea />
       </aside>
     </div>
+  );
+}
+
+function HomeShortcuts() {
+  return (
+    <section className="grid grid-cols-2 gap-3">
+      <Link
+        href="/create/memory"
+        className="mem-card flex min-w-0 items-center gap-3 rounded-[1.25rem] p-3 transition hover:border-[var(--app-accent)] active:scale-[0.99] sm:rounded-[1.5rem] sm:p-4"
+      >
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+          <PenLine size={18} />
+        </div>
+        <span className="min-w-0 text-sm font-semibold leading-tight text-[var(--app-text)] sm:text-base">
+          Create Memory
+        </span>
+      </Link>
+
+      <Link
+        href="/create/moment"
+        className="mem-card flex min-w-0 items-center gap-3 rounded-[1.25rem] p-3 transition hover:border-[var(--app-accent)] active:scale-[0.99] sm:rounded-[1.5rem] sm:p-4"
+      >
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+          <Camera size={18} />
+        </div>
+        <span className="min-w-0 text-sm font-semibold leading-tight text-[var(--app-text)] sm:text-base">
+          Capture Moment
+        </span>
+      </Link>
+    </section>
   );
 }
 
@@ -423,12 +422,6 @@ function MomentsTray({
 
   return (
     <section className="mem-card overflow-hidden rounded-[1.35rem] sm:rounded-[2rem]">
-      <div className="border-b border-[var(--app-border)] px-4 py-3">
-        <h2 className="text-sm font-semibold text-[var(--app-text)]">
-          Moments
-        </h2>
-      </div>
-
       <div className="p-3 sm:p-4">
         <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
           <YourMomentCard group={myGroup} />

@@ -24,9 +24,9 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
   const { profile, stats, memories } = data;
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-5">
-      <section className="mem-card relative isolate overflow-hidden rounded-[2rem]">
-        <div className="relative z-0 h-52 overflow-hidden sm:h-64">
+    <div className="mx-auto w-full max-w-[1500px] space-y-4 sm:space-y-5">
+      <section className="mem-card relative isolate overflow-hidden rounded-[1.5rem] sm:rounded-[1.8rem]">
+        <div className="relative z-0 h-36 overflow-hidden sm:h-48 lg:h-52">
           {profile.coverUrl ? (
             <img
               src={profile.coverUrl}
@@ -39,10 +39,10 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
 
           <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
 
-          <div className="absolute right-4 top-4 z-30 flex gap-2">
+          <div className="absolute right-3 top-3 z-30 flex gap-2 sm:right-4 sm:top-4">
             <Link
               href="/settings/profile"
-              className="flex h-10 items-center gap-2 rounded-2xl border border-white/30 bg-white/80 px-4 text-sm font-semibold text-slate-800 shadow-sm backdrop-blur-xl transition hover:bg-white"
+              className="flex h-9 items-center gap-2 rounded-2xl border border-white/30 bg-white/85 px-3 text-sm font-semibold text-slate-800 shadow-sm backdrop-blur-xl transition hover:bg-white sm:h-10 sm:px-4"
             >
               <Edit3 size={16} />
               Edit
@@ -50,7 +50,7 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
 
             <Link
               href="/settings"
-              className="flex size-10 items-center justify-center rounded-2xl border border-white/30 bg-white/80 text-slate-800 shadow-sm backdrop-blur-xl transition hover:bg-white"
+              className="flex size-9 items-center justify-center rounded-2xl border border-white/30 bg-white/85 text-slate-800 shadow-sm backdrop-blur-xl transition hover:bg-white sm:size-10"
               aria-label="Settings"
             >
               <Settings size={17} />
@@ -58,10 +58,61 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
           </div>
         </div>
 
-        <div className="relative z-20 border-t border-[var(--app-border)] bg-[var(--app-surface)] px-5 pb-5 sm:px-6 sm:pb-6">
-          <div className="grid gap-5 pt-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
-              <div className="-mt-16 sm:-mt-20">
+        <div className="relative z-20 border-t border-[var(--app-border)] bg-[var(--app-surface)] px-3.5 pb-3.5 sm:px-5 sm:pb-5">
+          <div className="grid gap-4 pt-3.5 sm:pt-5 lg:grid-cols-[minmax(0,1fr)_330px] lg:items-start">
+            <div className="min-w-0 sm:hidden">
+              <div className="flex min-w-0 gap-3">
+                <div className="-mt-10 shrink-0">
+                  <Avatar
+                    fullName={profile.fullName}
+                    avatarUrl={profile.avatarUrl}
+                  />
+                </div>
+
+                <div className="min-w-0 pt-1">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <h1 className="font-brand truncate text-2xl font-semibold tracking-[-0.055em] text-[var(--app-text)]">
+                      {profile.fullName}
+                    </h1>
+                    <VisibilityBadge visibility={profile.accountVisibility} />
+                  </div>
+
+                  <p className="mt-0.5 truncate text-sm font-medium text-[var(--app-muted)]">
+                    @{profile.username}
+                  </p>
+                </div>
+              </div>
+
+              <ProfileInlineStats
+                layout="mobile"
+                items={[
+                  {
+                    value: stats.memories,
+                    singular: "Memory",
+                    plural: "Memories",
+                  },
+                  {
+                    value: stats.followers,
+                    singular: "Follower",
+                    plural: "Followers",
+                  },
+                  {
+                    value: stats.following,
+                    singular: "Following",
+                    plural: "Following",
+                  },
+                ]}
+              />
+
+              {profile.bio && (
+                <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-6 text-[var(--app-muted)]">
+                  {profile.bio}
+                </p>
+              )}
+            </div>
+
+            <div className="hidden min-w-0 gap-3 sm:flex sm:gap-4">
+              <div className="-mt-10 shrink-0 sm:-mt-14">
                 <Avatar
                   fullName={profile.fullName}
                   avatarUrl={profile.avatarUrl}
@@ -69,23 +120,19 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
               </div>
 
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="font-brand text-3xl font-semibold text-[var(--app-text)] sm:text-4xl">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <h1 className="font-brand text-2xl font-semibold tracking-[-0.055em] text-[var(--app-text)] sm:text-4xl">
                     {profile.fullName}
                   </h1>
-
-                  <span className="inline-flex rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
-                    {profile.accountVisibility === "private"
-                      ? "Private account"
-                      : "Public account"}
-                  </span>
+                  <VisibilityBadge visibility={profile.accountVisibility} />
                 </div>
 
-                <p className="mt-1 text-sm font-medium text-[var(--app-muted)]">
+                <p className="mt-0.5 text-sm font-medium text-[var(--app-muted)]">
                   @{profile.username}
                 </p>
 
                 <ProfileInlineStats
+                  layout="desktop"
                   items={[
                     {
                       value: stats.memories,
@@ -102,32 +149,28 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
                       singular: "Following",
                       plural: "Following",
                     },
-                    {
-                      value: stats.media,
-                      singular: "Media",
-                      plural: "Media",
-                    },
                   ]}
                 />
 
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--app-muted)]">
-                  {profile.bio ||
-                    "No bio added yet. Share a short line about your memories, life, or creative world."}
-                </p>
+                {profile.bio && (
+                  <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-6 text-[var(--app-muted)]">
+                    {profile.bio}
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
+            <div className="grid grid-cols-2 gap-3 lg:justify-end">
               <Link
                 href={`/u/${profile.username}`}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-5 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-3 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)] sm:h-11 sm:px-5"
               >
                 Public profile
               </Link>
 
               <Link
                 href="/create"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(99,102,241,0.25)] transition hover:bg-[var(--app-accent-hover)]"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-3 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(99,102,241,0.22)] transition hover:bg-[var(--app-accent-hover)] sm:h-11 sm:px-5"
               >
                 Create
                 <Sparkles size={17} />
@@ -137,31 +180,28 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
         </div>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="min-w-0 space-y-5">
-          <div className="mem-card rounded-[2rem] p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="grid gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="min-w-0 space-y-4 sm:space-y-5">
+          <div className="mem-card rounded-[1.5rem] p-3.5 sm:rounded-[1.8rem] sm:p-5">
+            <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
                   <CalendarDays size={14} />
-                  Profile Timeline
+                  Timeline
                 </p>
 
-                <h2 className="font-brand text-2xl font-semibold tracking-[-0.05em] text-[var(--app-text)]">
+                <h2 className="font-brand text-xl font-semibold tracking-[-0.05em] text-[var(--app-text)] sm:text-2xl">
                   Your Memories
                 </h2>
-
-                <p className="mt-1 text-sm leading-6 text-[var(--app-muted)]">
-                  Memories you created, excluding private Vault entries.
-                </p>
               </div>
 
               <Link
                 href="/create/memory"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
+                className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-3 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)] sm:h-11 sm:px-4"
               >
                 <PenLine size={16} />
-                Write Memory
+                <span className="hidden sm:inline">Write Memory</span>
+                <span className="sm:hidden">Write</span>
               </Link>
             </div>
           </div>
@@ -169,7 +209,7 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
           {memories.length === 0 ? (
             <EmptyProfileMemories />
           ) : (
-            <div className="grid gap-5 sm:grid-cols-2 2xl:grid-cols-3">
+            <div className="grid gap-4 sm:gap-5 sm:grid-cols-2 2xl:grid-cols-3">
               {memories.map((memory) => (
                 <ProfileMemoryCard key={memory.id} memory={memory} />
               ))}
@@ -177,11 +217,11 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
           )}
         </section>
 
-        <aside className="space-y-5">
-          <div className="mem-card rounded-[2rem] p-5">
+        <aside className="space-y-4 sm:space-y-5">
+          <div className="mem-card rounded-[1.5rem] p-3.5 sm:rounded-[1.8rem] sm:p-5">
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex size-11 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
-                <Bell size={18} />
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+                <Bell size={17} />
               </div>
 
               <div>
@@ -205,17 +245,17 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
 
             <Link
               href="/requests"
-              className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] text-sm font-semibold text-white transition hover:bg-[var(--app-accent-hover)]"
+              className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] text-sm font-semibold text-white transition hover:bg-[var(--app-accent-hover)] sm:h-11"
             >
               Manage Requests
               <UserCheck size={16} />
             </Link>
           </div>
 
-          <div className="mem-card rounded-[2rem] p-5">
+          <div className="mem-card rounded-[1.5rem] p-3.5 sm:rounded-[1.8rem] sm:p-5">
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex size-11 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
-                <LockKeyhole size={18} />
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+                <LockKeyhole size={17} />
               </div>
 
               <div>
@@ -228,29 +268,13 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
               </div>
             </div>
 
-            <p className="text-sm leading-6 text-[var(--app-muted)]">
-              Your Vault entries are not shown on your profile or Home feed.
-              They stay visible only to you.
-            </p>
-
             <Link
               href="/vault"
-              className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--app-heading)] text-sm font-semibold text-[var(--app-bg)] transition hover:opacity-90"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--app-heading)] text-sm font-semibold text-[var(--app-bg)] transition hover:opacity-90 sm:h-11"
             >
               Open Vault
               <LockKeyhole size={16} />
             </Link>
-          </div>
-
-          <div className="mem-card rounded-[2rem] p-5">
-            <h3 className="font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-              Social foundation
-            </h3>
-
-            <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">
-              Next we will add Discover People, likes, reflections, messages,
-              and Moments.
-            </p>
           </div>
         </aside>
       </div>
@@ -278,38 +302,80 @@ function Avatar({
       <img
         src={avatarUrl}
         alt={fullName}
-        className="relative z-20 size-28 shrink-0 rounded-[2rem] border-4 border-[var(--app-surface-strong)] object-cover shadow-[0_22px_60px_var(--app-shadow)] sm:size-32"
+        className="relative z-20 size-20 shrink-0 rounded-[1.45rem] border-4 border-[var(--app-surface-strong)] object-cover shadow-[0_18px_44px_var(--app-shadow)] sm:size-24 sm:rounded-[1.7rem]"
       />
     );
   }
 
   return (
-    <div className="relative z-20 flex size-28 shrink-0 items-center justify-center rounded-[2rem] border-4 border-[var(--app-surface-strong)] bg-[var(--app-soft)] font-brand text-3xl font-semibold text-[var(--app-accent)] shadow-[0_22px_60px_var(--app-shadow)] sm:size-32">
+    <div className="relative z-20 flex size-20 shrink-0 items-center justify-center rounded-[1.45rem] border-4 border-[var(--app-surface-strong)] bg-[var(--app-soft)] font-brand text-2xl font-semibold text-[var(--app-accent)] shadow-[0_18px_44px_var(--app-shadow)] sm:size-24 sm:rounded-[1.7rem]">
       {initials}
     </div>
   );
 }
 
+function VisibilityBadge({
+  visibility,
+}: {
+  visibility: "public" | "private";
+}) {
+  const isPrivate = visibility === "private";
+
+  return (
+    <span
+      className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--app-soft)] text-[var(--app-accent)]"
+      title={isPrivate ? "Private account" : "Public account"}
+      aria-label={isPrivate ? "Private account" : "Public account"}
+    >
+      {isPrivate ? <LockKeyhole size={15} /> : <UserCheck size={15} />}
+    </span>
+  );
+}
+
 function ProfileInlineStats({
   items,
+  layout = "desktop",
 }: {
   items: Array<{
     value: number;
     singular: string;
     plural: string;
   }>;
+  layout?: "mobile" | "desktop";
 }) {
+  if (layout === "mobile") {
+    return (
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {items.map((item) => (
+          <span
+            key={item.plural}
+            className="min-w-0 rounded-[1.05rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-2 py-2 text-center"
+          >
+            <strong className="block font-brand text-base font-semibold leading-none text-[var(--app-text)]">
+              {item.value}
+            </strong>
+            <span className="mt-1 block text-[11px] font-medium leading-tight text-[var(--app-muted)]">
+              {item.value === 1 ? item.singular : item.plural}
+            </span>
+          </span>
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[var(--app-muted)]">
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[var(--app-muted)] sm:mt-3">
       {items.map((item) => (
         <span
           key={item.plural}
-          className="inline-flex items-baseline gap-1.5 rounded-full border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-3 py-1.5"
+          className="inline-flex items-baseline gap-1.5 rounded-full border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-2.5 py-1 sm:px-3 sm:py-1.5"
         >
-          <strong className="font-brand text-base font-semibold text-[var(--app-text)]">
+          <strong className="font-brand text-sm font-semibold text-[var(--app-text)] sm:text-base">
             {item.value}
           </strong>
-          <span>{item.value === 1 ? item.singular : item.plural}</span>
+          <span className="text-xs sm:text-sm">
+            {item.value === 1 ? item.singular : item.plural}
+          </span>
         </span>
       ))}
     </div>
@@ -318,11 +384,11 @@ function ProfileInlineStats({
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.2rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--app-muted)]">
+    <div className="rounded-[1.15rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-2.5 sm:rounded-[1.25rem] sm:p-3">
+      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--app-muted)] sm:text-[10px]">
         {label}
       </p>
-      <p className="mt-1 font-brand text-xl font-semibold text-[var(--app-text)]">
+      <p className="mt-1 font-brand text-xl font-semibold tracking-[-0.05em] text-[var(--app-text)]">
         {value}
       </p>
     </div>
@@ -333,13 +399,13 @@ function ProfileMemoryCard({ memory }: { memory: FeedMemory }) {
   const firstMedia = memory.media[0];
 
   return (
-    <article className="mem-card relative overflow-hidden rounded-[2rem]">
+    <article className="mem-card relative overflow-hidden rounded-[1.6rem] sm:rounded-[1.8rem]">
       <div className="absolute right-3 top-3 z-10">
         <DeleteMemoryButton memoryId={memory.id} type="memory" />
       </div>
 
       {firstMedia ? (
-        <div className="h-64 overflow-hidden bg-[var(--app-surface-soft)]">
+        <div className="h-52 overflow-hidden bg-[var(--app-surface-soft)] sm:h-60">
           {firstMedia.mediaKind === "image" ? (
             <Link href={`/memory/${memory.id}`}>
               <img
@@ -366,14 +432,14 @@ function ProfileMemoryCard({ memory }: { memory: FeedMemory }) {
       ) : (
         <Link
           href={`/memory/${memory.id}`}
-          className="flex h-64 items-center justify-center [background:var(--vault-hero)]"
+          className="flex h-52 items-center justify-center [background:var(--vault-hero)] sm:h-60"
         >
           <ImagePlus className="text-[var(--app-accent)]" />
         </Link>
       )}
 
-      <div className="p-4">
-        <div className="mb-3 flex flex-wrap gap-2">
+      <div className="p-3.5 sm:p-4">
+        <div className="mb-2 flex flex-wrap gap-2 sm:mb-3">
           {memory.moods.slice(0, 3).map((mood) => (
             <span
               key={mood}
@@ -394,12 +460,12 @@ function ProfileMemoryCard({ memory }: { memory: FeedMemory }) {
           </h3>
         </Link>
 
-        <p className="mt-2 line-clamp-4 text-sm leading-6 text-[var(--app-muted)]">
+        <p className="mt-2 line-clamp-3 text-sm leading-6 text-[var(--app-muted)]">
           {memory.content}
         </p>
 
         {memory.locationName && (
-          <p className="mt-4 flex items-center gap-2 text-xs text-[var(--app-muted)]">
+          <p className="mt-3 flex items-center gap-2 text-xs text-[var(--app-muted)]">
             <MapPin size={14} />
             {memory.locationName}
           </p>
@@ -419,23 +485,18 @@ function ProfileMemoryCard({ memory }: { memory: FeedMemory }) {
 
 function EmptyProfileMemories() {
   return (
-    <section className="mem-card rounded-[2rem] p-8 text-center">
-      <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-[1.4rem] bg-[var(--app-soft)] text-[var(--app-accent)]">
+    <section className="mem-card rounded-[1.6rem] p-6 text-center sm:rounded-[2rem] sm:p-8">
+      <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-[1.4rem] bg-[var(--app-soft)] text-[var(--app-accent)] sm:mb-5">
         <ImagePlus size={24} />
       </div>
 
-      <h2 className="font-brand text-2xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+      <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)] sm:text-2xl">
         No memories on your profile yet
       </h2>
 
-      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--app-muted)]">
-        Write your first memory and it will appear here. Vault entries will stay
-        private inside Vault.
-      </p>
-
       <Link
         href="/create/memory"
-        className="mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--app-accent-hover)]"
+        className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--app-accent-hover)] sm:h-12"
       >
         Write Memory
         <PenLine size={17} />

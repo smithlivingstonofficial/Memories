@@ -116,8 +116,8 @@ function PersistentAppLayout({ children, user }: AppLayoutProps) {
             <section
               className={
                 hideMobileBottomNav
-                  ? "min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-4 sm:px-6 lg:px-8 lg:pb-8"
-                  : "min-h-0 flex-1 overflow-y-auto px-4 pb-[112px] pt-4 sm:px-6 lg:px-8 lg:pb-8"
+                  ? "min-h-0 w-full max-w-full flex-1 overflow-x-hidden overflow-y-auto px-3 pb-4 pt-3 [scrollbar-gutter:stable] sm:px-6 sm:pt-4 lg:px-8 lg:pb-8"
+                  : "min-h-0 w-full max-w-full flex-1 overflow-x-hidden overflow-y-auto px-3 pb-[104px] pt-3 [scrollbar-gutter:stable] sm:px-6 sm:pb-[112px] sm:pt-4 lg:px-8 lg:pb-8"
               }
             >
               {children}

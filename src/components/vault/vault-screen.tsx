@@ -1,13 +1,10 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import {
   ArrowRight,
   Eye,
   ImagePlus,
   LockKeyhole,
-  Moon,
   PenLine,
-  ShieldCheck,
 } from "lucide-react";
 import { DeleteMemoryButton } from "@/components/memory/delete-memory-button";
 import { lockVaultAction } from "@/app/actions/vault";
@@ -34,32 +31,27 @@ export function VaultScreen({ entries }: VaultScreenProps) {
 
   return (
     <div className="mx-auto w-full max-w-[1500px]">
-      <section className="relative mb-5 overflow-hidden rounded-[2rem] border border-[var(--app-border)] p-5 shadow-[0_24px_80px_var(--app-shadow)] [background:var(--vault-hero)] sm:p-6 lg:p-7">
+      <section className="relative mb-4 overflow-hidden rounded-[1.5rem] border border-[var(--app-border)] p-3.5 shadow-[0_18px_60px_var(--app-shadow)] [background:var(--vault-hero)] sm:mb-5 sm:rounded-[1.8rem] sm:p-5">
         <div className="pointer-events-none absolute -left-20 -top-20 size-72 rounded-full bg-[#6366F1]/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 right-0 size-72 rounded-full bg-[#FFE4E6]/30 blur-3xl" />
 
-        <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="relative grid gap-3 sm:gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
           <div>
-            <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
+            <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
               <LockKeyhole size={14} />
               Private Vault
             </p>
 
-            <h1 className="font-brand text-3xl font-semibold tracking-[-0.055em] text-[var(--app-text)] sm:text-4xl">
+            <h1 className="font-brand text-2xl font-semibold tracking-[-0.055em] text-[var(--app-text)] sm:text-4xl">
               Your private Vault
             </h1>
-
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--app-muted)]">
-              Thoughts, prayers, memories, and feelings only you can see. Vault
-              entries never appear in Home, Discover, or public profiles.
-            </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="grid grid-cols-2 gap-3">
             <form action={lockVaultAction}>
               <button
                 type="submit"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-5 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 text-sm font-semibold text-[var(--app-muted)] transition hover:border-[var(--app-accent)] hover:text-[var(--app-text)] sm:h-12 sm:px-5"
               >
                 Lock Vault
                 <LockKeyhole size={17} />
@@ -68,15 +60,16 @@ export function VaultScreen({ entries }: VaultScreenProps) {
 
             <Link
               href="/create/vault"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(99,102,241,0.25)] transition hover:bg-[var(--app-accent-hover)]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-4 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(99,102,241,0.22)] transition hover:bg-[var(--app-accent-hover)] sm:h-12 sm:px-5"
             >
-              Write in Vault
+              <span className="hidden sm:inline">Write in Vault</span>
+              <span className="sm:hidden">Write</span>
               <PenLine size={17} />
             </Link>
           </div>
         </div>
 
-        <div className="relative mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="relative mt-3 grid grid-cols-3 gap-2.5 sm:mt-4 sm:gap-3">
           <VaultStat label="Entries" value={entries.length.toString()} />
           <VaultStat label="Words" value={totalWords.toString()} />
           <VaultStat label="Media" value={mediaCount.toString()} />
@@ -86,29 +79,11 @@ export function VaultScreen({ entries }: VaultScreenProps) {
       {entries.length === 0 ? (
         <EmptyVault />
       ) : (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="grid min-w-0 gap-5 lg:grid-cols-2 2xl:grid-cols-3">
-            {entries.map((entry) => (
-              <VaultEntryCard key={entry.id} entry={entry} />
-            ))}
-          </section>
-
-          <aside className="hidden space-y-5 xl:block">
-            <InfoCard
-              icon={<ShieldCheck size={17} />}
-              title="Private by design"
-              subtitle="Only you can see this."
-              text="Vault memories are saved with private visibility and are never shown in Home, Discover, or public profile grids."
-            />
-
-            <InfoCard
-              icon={<Moon size={17} />}
-              title="Gentle prompt"
-              subtitle="For today"
-              text="What is something you felt today but did not say out loud?"
-            />
-          </aside>
-        </div>
+        <section className="grid min-w-0 gap-4 sm:gap-5 lg:grid-cols-2 2xl:grid-cols-3">
+          {entries.map((entry) => (
+            <VaultEntryCard key={entry.id} entry={entry} />
+          ))}
+        </section>
       )}
     </div>
   );
@@ -231,44 +206,13 @@ function EmptyVault() {
 
 function VaultStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.4rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 py-3 backdrop-blur-xl">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">
+    <div className="rounded-[1.15rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-2.5 backdrop-blur-xl sm:rounded-[1.35rem] sm:p-3.5">
+      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--app-muted)] sm:text-[10px] sm:tracking-[0.16em]">
         {label}
       </p>
-      <p className="mt-1 font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+      <p className="mt-1 font-brand text-xl font-semibold tracking-[-0.05em] text-[var(--app-text)] sm:text-2xl">
         {value}
       </p>
-    </div>
-  );
-}
-
-function InfoCard({
-  icon,
-  title,
-  subtitle,
-  text,
-}: {
-  icon: ReactNode;
-  title: string;
-  subtitle: string;
-  text: string;
-}) {
-  return (
-    <div className="mem-card rounded-[2rem] p-5">
-      <div className="mb-3 flex items-center gap-3">
-        <div className="flex size-10 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
-          {icon}
-        </div>
-
-        <div>
-          <h3 className="font-brand text-base font-semibold tracking-[-0.03em] text-[var(--app-text)]">
-            {title}
-          </h3>
-          <p className="text-xs text-[var(--app-muted)]">{subtitle}</p>
-        </div>
-      </div>
-
-      <p className="text-sm leading-6 text-[var(--app-muted)]">{text}</p>
     </div>
   );
 }

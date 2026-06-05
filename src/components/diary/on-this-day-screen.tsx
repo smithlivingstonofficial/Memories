@@ -3,7 +3,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   CalendarDays,
   Clock3,
-  Heart,
   ImagePlus,
   LockKeyhole,
   PenLine,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import type {
   OnThisDayEntry,
+  OnThisDayLookbackWindow,
   OnThisDayPageData,
 } from "@/lib/diary/get-on-this-day-page-data";
 
@@ -21,31 +21,26 @@ type OnThisDayScreenProps = {
 
 export function OnThisDayScreen({ data }: OnThisDayScreenProps) {
   return (
-    <div className="mx-auto w-full max-w-[1450px] space-y-5">
-      <section className="relative overflow-hidden rounded-[2rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-5 shadow-[0_24px_80px_var(--app-shadow)] backdrop-blur-2xl sm:p-7">
+    <div className="mx-auto w-full max-w-[1500px] space-y-4 sm:space-y-5">
+      <section className="relative overflow-hidden rounded-[1.5rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-3.5 shadow-[0_18px_60px_var(--app-shadow)] backdrop-blur-2xl sm:rounded-[1.8rem] sm:p-5">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(99,102,241,0.20),transparent_30%),radial-gradient(circle_at_92%_95%,rgba(255,228,230,0.30),transparent_34%)]" />
 
-        <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--app-accent)]">
+        <div className="relative grid gap-3 sm:gap-4 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-center">
+          <div className="min-w-0">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
               <Sparkles size={14} />
               On this day
             </div>
 
-            <h1 className="font-brand max-w-3xl text-3xl font-semibold leading-[1.05] tracking-[-0.06em] text-[var(--app-text)] sm:text-5xl">
+            <h1 className="font-brand max-w-3xl text-2xl font-semibold leading-[1.08] tracking-[-0.055em] text-[var(--app-text)] sm:text-4xl">
               Memories from {data.todayLabel}
             </h1>
-
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--app-muted)] sm:text-base">
-              Revisit what you wrote on this same date in previous years. This
-              is your personal time capsule.
-            </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[360px]">
+          <div className="grid grid-cols-2 gap-3">
             <Link
               href="/dashboard"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-5 text-sm font-semibold text-[var(--app-muted)] transition hover:border-[var(--app-accent)] hover:text-[var(--app-text)]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-4 text-sm font-semibold text-[var(--app-muted)] transition hover:border-[var(--app-accent)] hover:text-[var(--app-text)] sm:h-12 sm:px-5"
             >
               <CalendarDays size={17} />
               Dashboard
@@ -53,15 +48,16 @@ export function OnThisDayScreen({ data }: OnThisDayScreenProps) {
 
             <Link
               href="/create/memory"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white transition hover:opacity-90"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-4 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(99,102,241,0.22)] transition hover:opacity-90 sm:h-12 sm:px-5"
             >
               <PenLine size={17} />
-              Write Today
+              <span className="hidden sm:inline">Write Today</span>
+              <span className="sm:hidden">Write</span>
             </Link>
           </div>
         </div>
 
-        <div className="relative mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="relative mt-3 grid grid-cols-2 gap-2.5 sm:mt-4 sm:gap-3 md:grid-cols-3 xl:grid-cols-5">
           <HeroStat label="Entries" value={data.stats.totalEntries} />
           <HeroStat label="Memories" value={data.stats.memoryCount} />
           <HeroStat label="Vault" value={data.stats.vaultCount} />
@@ -70,9 +66,9 @@ export function OnThisDayScreen({ data }: OnThisDayScreenProps) {
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <main className="mem-card rounded-[2rem] p-5">
-          <div className="mb-6">
+      <section className="grid gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <main className="mem-card rounded-[1.6rem] p-4 sm:rounded-[2rem] sm:p-5">
+          <div className="mb-4 sm:mb-5">
             <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-[var(--app-soft)] px-3 py-1 text-xs font-semibold text-[var(--app-accent)]">
               <Clock3 size={14} />
               Time capsule
@@ -83,10 +79,6 @@ export function OnThisDayScreen({ data }: OnThisDayScreenProps) {
                 ? `${data.entries.length} memories found`
                 : "No memories yet"}
             </h2>
-
-            <p className="mt-1 text-sm text-[var(--app-muted)]">
-              Past diary entries from the same date.
-            </p>
           </div>
 
           {data.entries.length === 0 ? (
@@ -105,29 +97,8 @@ export function OnThisDayScreen({ data }: OnThisDayScreenProps) {
           )}
         </main>
 
-        <aside className="space-y-5">
-          <section className="mem-card rounded-[2rem] p-5">
-            <div className="mb-5 flex items-center gap-3">
-              <div className="flex size-11 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
-                <Heart size={18} />
-              </div>
-
-              <div>
-                <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
-                  Reflection
-                </h2>
-                <p className="text-xs text-[var(--app-muted)]">
-                  A quiet moment to revisit.
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-[1.5rem] bg-[var(--app-soft)] p-4 text-sm leading-7 text-[var(--app-muted)]">
-              What changed since then? What stayed the same? What would you say
-              to the person who wrote those memories?
-            </div>
-          </section>
-
+        <aside className="space-y-4 sm:space-y-5">
+          <LookbackWindows windows={data.lookbackWindows} />
           <section className="mem-card rounded-[2rem] p-5">
             <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
               Quick actions
@@ -238,23 +209,18 @@ function OnThisDayEntryCard({ entry }: { entry: OnThisDayEntry }) {
 
 function EmptyOnThisDay() {
   return (
-    <div className="rounded-[2rem] border border-dashed border-[var(--app-border)] bg-[var(--app-surface-strong)] p-8 text-center">
-      <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-[1.5rem] bg-[var(--app-soft)] text-[var(--app-accent)]">
-        <Sparkles size={26} />
+    <div className="rounded-[1.6rem] border border-dashed border-[var(--app-border)] bg-[var(--app-surface-strong)] p-6 text-center sm:rounded-[2rem] sm:p-8">
+      <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-[1.4rem] bg-[var(--app-soft)] text-[var(--app-accent)] sm:mb-5 sm:size-16 sm:rounded-[1.5rem]">
+        <Sparkles size={24} />
       </div>
 
-      <h3 className="font-brand text-2xl font-semibold tracking-[-0.05em] text-[var(--app-text)]">
+      <h3 className="font-brand text-xl font-semibold tracking-[-0.05em] text-[var(--app-text)] sm:text-2xl">
         No memories from this date yet
       </h3>
 
-      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--app-muted)]">
-        Keep writing. After a year, this page will become your personal time
-        capsule.
-      </p>
-
       <Link
         href="/create/memory"
-        className="mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white transition hover:opacity-90"
+        className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--app-accent)] px-5 text-sm font-semibold text-white transition hover:opacity-90 sm:h-12"
       >
         <PenLine size={17} />
         Write today
@@ -263,14 +229,75 @@ function EmptyOnThisDay() {
   );
 }
 
+function LookbackWindows({ windows }: { windows: OnThisDayLookbackWindow[] }) {
+  return (
+    <section className="mem-card rounded-[1.6rem] p-4 sm:rounded-[2rem] sm:p-5">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex size-10 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+          <Clock3 size={17} />
+        </div>
+
+        <h2 className="font-brand text-xl font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+          Lookbacks
+        </h2>
+      </div>
+
+      <div className="grid gap-3">
+        {windows.map((window) => (
+          <Link
+            key={window.id}
+            href={`/diary/day/${window.date}`}
+            className="group rounded-[1.35rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-3 transition hover:border-[var(--app-accent)] sm:rounded-[1.5rem]"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--app-muted)]">
+                  {window.label}
+                </p>
+                <h3 className="mt-1 font-brand text-lg font-semibold tracking-[-0.04em] text-[var(--app-text)]">
+                  {window.dateLabel}
+                </h3>
+              </div>
+
+              <span className="rounded-full bg-[var(--app-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--app-accent)]">
+                {window.stats.totalEntries}
+              </span>
+            </div>
+
+            {window.entries.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <MiniCount label="Memories" value={window.stats.memoryCount} />
+                <MiniCount label="Vault" value={window.stats.vaultCount} />
+                <MiniCount label="Media" value={window.stats.mediaCount} />
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-[var(--app-muted)]">
+                No entries saved.
+              </p>
+            )}
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MiniCount({ label, value }: { label: string; value: number }) {
+  return (
+    <span className="rounded-full bg-[var(--app-surface)] px-2.5 py-1 text-xs font-medium text-[var(--app-muted)]">
+      {value} {label}
+    </span>
+  );
+}
+
 function HeroStat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-[1.5rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-4">
-      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--app-muted)]">
+    <div className="rounded-[1.15rem] border border-[var(--app-border)] bg-[var(--app-surface-strong)] p-2.5 sm:rounded-[1.35rem] sm:p-3.5">
+      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--app-muted)] sm:text-[10px] sm:tracking-[0.16em]">
         {label}
       </p>
 
-      <p className="mt-2 font-brand text-2xl font-semibold tracking-[-0.05em] text-[var(--app-text)]">
+      <p className="mt-1 font-brand text-xl font-semibold tracking-[-0.05em] text-[var(--app-text)] sm:text-2xl">
         {value}
       </p>
     </div>
