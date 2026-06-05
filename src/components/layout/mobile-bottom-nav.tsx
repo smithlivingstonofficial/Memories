@@ -10,15 +10,21 @@ type MobileBottomNavProps = {
   pathname: string;
   menuOpen: boolean;
   onOpenMenu: () => void;
+  elevated?: boolean;
 };
 
 export function MobileBottomNav({
   pathname,
   menuOpen,
   onOpenMenu,
+  elevated = false,
 }: MobileBottomNavProps) {
   return (
-    <nav className="fixed bottom-3 left-1/2 z-50 w-[calc(100dvw-10px)] max-w-[460px] -translate-x-1/2 rounded-[2rem] border border-[var(--app-border)] bg-[linear-gradient(135deg,var(--app-surface-strong),var(--app-surface))] px-2 pb-2 pt-2.5 shadow-[0_26px_90px_var(--app-shadow),0_10px_32px_rgba(99,102,241,0.16)] backdrop-blur-2xl sm:bottom-4 sm:w-[calc(100dvw-18px)] lg:hidden">
+    <nav
+      className={`fixed bottom-3 left-1/2 w-[calc(100dvw-10px)] max-w-[460px] -translate-x-1/2 rounded-[2rem] border border-[var(--app-border)] bg-[linear-gradient(135deg,var(--app-surface-strong),var(--app-surface))] px-2 pb-2 pt-2.5 shadow-[0_26px_90px_var(--app-shadow),0_10px_32px_rgba(99,102,241,0.16)] backdrop-blur-2xl sm:bottom-4 sm:w-[calc(100dvw-18px)] lg:hidden ${
+        elevated ? "z-[1200]" : "z-50"
+      }`}
+    >
       <div className="pointer-events-none absolute inset-x-6 -top-px h-px bg-gradient-to-r from-transparent via-white/70 to-transparent" />
       <div className="pointer-events-none absolute inset-x-8 bottom-1 h-8 rounded-full bg-[var(--app-soft)] opacity-40 blur-2xl" />
       <div className="pointer-events-none absolute left-1/2 top-2 size-[82px] -translate-x-1/2 rounded-full bg-[var(--app-accent)] opacity-10 blur-xl" />

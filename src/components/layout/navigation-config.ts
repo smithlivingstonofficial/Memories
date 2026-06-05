@@ -6,6 +6,7 @@ import {
   Home,
   LayoutDashboard,
   LockKeyhole,
+  MapPin,
   MessageCircle,
   PenLine,
   Settings,
@@ -35,6 +36,7 @@ export const desktopNavGroups: NavGroup[] = [
         match: ["/calendar", "/diary/day"],
       },
       { label: "Timeline", href: "/timeline", icon: Clock3 },
+      { label: "Places", href: "/map", icon: MapPin },
       { label: "Vault", href: "/vault", icon: LockKeyhole },
       { label: "On This Day", href: "/on-this-day", icon: Sparkles },
       { label: "Keepsakes", href: "/keepsakes", icon: Bookmark, badge: "Soon" },
@@ -75,6 +77,7 @@ export const mobileMenuGroups: NavGroup[] = [
     title: "Diary",
     items: [
       { label: "Timeline", href: "/timeline", icon: Clock3 },
+      { label: "Places", href: "/map", icon: MapPin },
       { label: "Vault", href: "/vault", icon: LockKeyhole },
       { label: "On This Day", href: "/on-this-day", icon: Sparkles },
       { label: "Keepsakes", href: "/keepsakes", icon: Bookmark, badge: "Soon" },

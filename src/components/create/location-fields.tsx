@@ -1,7 +1,19 @@
 "use client";
 
-import { MapPin } from "lucide-react";
+import dynamic from "next/dynamic";
+import { useState } from "react";
+import { Map, MapPin } from "lucide-react";
 import { formatCoordinateLabel } from "@/lib/media/client-media-processing";
+
+const LocationMapPicker = dynamic(
+  () =>
+    import("@/components/create/location-map-picker").then(
+      (mod) => mod.LocationMapPicker
+    ),
+  {
+    ssr: false,
+  }
+);
 
 export type LocationSource =
   | "manual"
@@ -43,6 +55,8 @@ export function LocationFields({
   onLocationNameChange,
   onLocationChange,
 }: LocationFieldsProps) {
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
+
   function useCurrentLocation() {
     onLocationChange({
       locationName,
@@ -108,6 +122,7 @@ export function LocationFields({
       <input type="hidden" name="latitude" value={latitude ?? ""} />
       <input type="hidden" name="longitude" value={longitude ?? ""} />
       <input type="hidden" name="locationSource" value={locationSource} />
+      <input type="hidden" name="locationVisibility" value="private" />
       <input
         type="hidden"
         name="locationConfidence"
@@ -119,10 +134,17 @@ export function LocationFields({
         value={locationAccuracyMeters ?? ""}
       />
 
-      <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--app-text)]">
-        <MapPin size={16} />
-        Location
-      </label>
+      <div className="mb-3 flex items-start gap-2">
+        <MapPin size={16} className="mt-0.5 text-[var(--app-accent)]" />
+        <div>
+          <label className="block text-sm font-semibold text-[var(--app-text)]">
+            Add Location
+          </label>
+          <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
+            Location is optional and can stay private.
+          </p>
+        </div>
+      </div>
 
       <input
         name="locationName"
@@ -132,13 +154,42 @@ export function LocationFields({
         className="mem-input h-12 w-full rounded-2xl px-4 text-[15px] outline-none transition-all placeholder:text-[var(--app-faint)] focus:border-[var(--app-accent)] lg:h-11"
       />
 
-      <button
-        type="button"
-        onClick={useCurrentLocation}
-        className="mt-3 inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-4 text-xs font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-accent)] lg:h-9"
-      >
-        Use current location
-      </button>
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <button
+          type="button"
+          onClick={useCurrentLocation}
+          className="inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-3 text-xs font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-accent)] lg:h-9"
+        >
+          Use current location
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMapPickerOpen(true)}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-3 text-xs font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-accent)] lg:h-9"
+        >
+          <Map size={14} />
+          Choose on map
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            onLocationChange({
+              locationName: "",
+              latitude: null,
+              longitude: null,
+              locationSource: "unknown",
+              locationConfidence: null,
+              locationAccuracyMeters: null,
+              locationMessage: "Location skipped.",
+            })
+          }
+          className="inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] px-3 text-xs font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-accent)] lg:h-9"
+        >
+          Skip location
+        </button>
+      </div>
 
       {locationMessage && (
         <p className="mt-2 text-xs leading-5 text-[var(--app-muted)]">
@@ -150,6 +201,26 @@ export function LocationFields({
         <p className="mt-2 text-xs leading-5 text-[var(--app-muted)]">
           Coordinates saved for future map view.
         </p>
+      )}
+
+      {mapPickerOpen && (
+        <LocationMapPicker
+          initialLatitude={latitude}
+          initialLongitude={longitude}
+          onCancel={() => setMapPickerOpen(false)}
+          onSelect={(location) => {
+            onLocationChange({
+              locationName: location.locationName,
+              latitude: location.latitude,
+              longitude: location.longitude,
+              locationSource: "manual",
+              locationConfidence: 1,
+              locationAccuracyMeters: null,
+              locationMessage: "Map location selected.",
+            });
+            setMapPickerOpen(false);
+          }}
+        />
       )}
     </div>
   );

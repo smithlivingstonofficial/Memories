@@ -414,8 +414,11 @@ export async function createMemoryAction(
       location_label: locationLabel ?? locationName,
       latitude,
       longitude,
+      location_lat: latitude,
+      location_lng: longitude,
       location_source:
         latitude !== null && longitude !== null ? locationSource : "unknown",
+      location_visibility: "private",
       location_confidence: locationConfidence,
       location_accuracy_meters: locationAccuracyMeters,
       tags,
@@ -617,8 +620,11 @@ export async function createVaultEntryAction(
       location_label: locationLabel ?? locationName,
       latitude,
       longitude,
+      location_lat: latitude,
+      location_lng: longitude,
       location_source:
         latitude !== null && longitude !== null ? locationSource : "unknown",
+      location_visibility: "private",
       location_confidence: locationConfidence,
       location_accuracy_meters: locationAccuracyMeters,
       tags,
@@ -864,10 +870,13 @@ export async function editMemoryAction(
     location_label: editData.locationLabel ?? editData.locationName,
     latitude: editData.latitude,
     longitude: editData.longitude,
+    location_lat: editData.latitude,
+    location_lng: editData.longitude,
     location_source:
       editData.latitude !== null && editData.longitude !== null
         ? editData.locationSource
         : "unknown",
+    location_visibility: "private",
     location_confidence: editData.locationConfidence,
     location_accuracy_meters: editData.locationAccuracyMeters,
     tags: editData.tags,

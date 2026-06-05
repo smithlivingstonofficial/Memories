@@ -45,6 +45,7 @@ function PersistentAppLayout({ children, user }: AppLayoutProps) {
   );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const hideMobileBottomNav = pathname.startsWith("/messages");
+  const isMapPage = pathname === "/map";
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -115,7 +116,9 @@ function PersistentAppLayout({ children, user }: AppLayoutProps) {
 
             <section
               className={
-                hideMobileBottomNav
+                isMapPage
+                  ? "min-h-0 w-full max-w-full flex-1 overflow-hidden p-0"
+                  : hideMobileBottomNav
                   ? "min-h-0 w-full max-w-full flex-1 overflow-x-hidden overflow-y-auto px-3 pb-4 pt-3 [scrollbar-gutter:stable] sm:px-6 sm:pt-4 lg:px-8 lg:pb-8"
                   : "min-h-0 w-full max-w-full flex-1 overflow-x-hidden overflow-y-auto px-3 pb-[104px] pt-3 [scrollbar-gutter:stable] sm:px-6 sm:pb-[112px] sm:pt-4 lg:px-8 lg:pb-8"
               }
@@ -129,6 +132,7 @@ function PersistentAppLayout({ children, user }: AppLayoutProps) {
               pathname={pathname}
               menuOpen={mobileMenuOpen}
               onOpenMenu={() => setMobileMenuOpen(true)}
+              elevated={isMapPage}
             />
           )}
 

@@ -13,6 +13,7 @@ import {
   LockKeyhole,
   Clock3,
   LayoutDashboard,
+  MapPinned,
 } from "lucide-react";
 import { deleteContentDraftAction } from "@/app/actions/drafts";
 import { DeleteMemoryButton } from "@/components/memory/delete-memory-button";
@@ -86,7 +87,7 @@ export function HomeScreen({
 
 function HomeShortcuts() {
   return (
-    <section className="grid grid-cols-2 gap-3">
+    <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       <Link
         href="/create/memory"
         className="mem-card flex min-w-0 items-center gap-3 rounded-[1.25rem] p-3 transition hover:border-[var(--app-accent)] active:scale-[0.99] sm:rounded-[1.5rem] sm:p-4"
@@ -100,6 +101,18 @@ function HomeShortcuts() {
       </Link>
 
       <CaptureMomentShortcut />
+
+      <Link
+        href="/map"
+        className="mem-card flex min-w-0 items-center gap-3 rounded-[1.25rem] p-3 transition hover:border-[var(--app-accent)] active:scale-[0.99] sm:rounded-[1.5rem] sm:p-4"
+      >
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--app-soft)] text-[var(--app-accent)]">
+          <MapPinned size={18} />
+        </div>
+        <span className="min-w-0 text-sm font-semibold leading-tight text-[var(--app-text)] sm:text-base">
+          Memory Map
+        </span>
+      </Link>
     </section>
   );
 }
