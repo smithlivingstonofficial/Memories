@@ -1,6 +1,7 @@
 import "server-only";
 
-import { createSignedReadUrl } from "@/lib/r2";
+import { withQueryTimer, withTimer } from "@/lib/debug/performance-timer";
+import { resolveAssetUrlMap } from "@/lib/media/resolve-asset-urls";
 
 type SupabaseClient = Awaited<
   ReturnType<typeof import("@/lib/supabase/server").createClient>
@@ -39,32 +40,6 @@ export type DiscoverPeopleData = {
   people: DiscoverPerson[];
 };
 
-async function resolveAvatarUrl(
-  supabase: SupabaseClient,
-  assetId: string | null,
-  fallbackUrl: string | null
-) {
-  if (fallbackUrl) return fallbackUrl;
-  if (!assetId) return null;
-
-  const { data: asset } = await supabase
-    .from("media_assets")
-    .select("object_key, public_url, upload_status")
-    .eq("id", assetId)
-    .eq("upload_status", "uploaded")
-    .maybeSingle();
-
-  if (!asset) return null;
-
-  if (asset.public_url) return asset.public_url;
-
-  if (asset.object_key) {
-    return createSignedReadUrl(asset.object_key);
-  }
-
-  return null;
-}
-
 export async function getDiscoverPeopleData({
   supabase,
   userId,
@@ -74,89 +49,102 @@ export async function getDiscoverPeopleData({
   userId: string;
   query: string;
 }): Promise<DiscoverPeopleData> {
-  const cleanQuery = query
-    .trim()
-    .replace(/[,%]/g, " ")
-    .replace(/\s+/g, " ")
-    .slice(0, 60);
+  return withTimer("discover-users:total", async () => {
+    const cleanQuery = query
+      .trim()
+      .replace(/[,%]/g, " ")
+      .replace(/\s+/g, " ")
+      .slice(0, 60);
 
-  let request = supabase
-    .from("public_profiles")
-    .select(
-      "id, username, full_name, bio, avatar_url, avatar_asset_id, account_visibility"
-    )
-    .eq("is_searchable", true)
-    .neq("id", userId)
-    .order("updated_at", { ascending: false })
-    .limit(24);
+    let request = supabase
+      .from("public_profiles")
+      .select(
+        "id, username, full_name, bio, avatar_url, avatar_asset_id, account_visibility"
+      )
+      .eq("is_searchable", true)
+      .neq("id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(12);
 
-  if (cleanQuery.length > 0) {
-    const pattern = `%${cleanQuery}%`;
+    if (cleanQuery.length > 0) {
+      const pattern = `%${cleanQuery}%`;
 
-    request = request.or(
-      `username.ilike.${pattern},full_name.ilike.${pattern},bio.ilike.${pattern}`
-    );
-  }
-
-  const { data: profiles, error: profilesError } = await request;
-
-  if (profilesError) {
-    throw new Error(profilesError.message);
-  }
-
-  const profileRows = (profiles ?? []) as PublicProfileRow[];
-
-  if (profileRows.length === 0) {
-    return {
-      query: cleanQuery,
-      people: [],
-    };
-  }
-
-  const profileIds = profileRows.map((profile) => profile.id);
-
-  const { data: followRows } = await supabase
-    .from("user_follows")
-    .select("following_id, status")
-    .eq("follower_id", userId)
-    .in("following_id", profileIds);
-
-  const followMap = new Map<string, FollowRow>(
-    ((followRows ?? []) as FollowRow[]).map((row) => [row.following_id, row])
-  );
-
-  const people: DiscoverPerson[] = [];
-
-  for (const profile of profileRows) {
-    const followRow = followMap.get(profile.id);
-
-    let followStatus: FollowStatus = "not_following";
-
-    if (followRow?.status === "accepted") {
-      followStatus = "following";
-    } else if (followRow?.status === "pending") {
-      followStatus = "requested";
+      request = request.or(
+        `username.ilike.${pattern},full_name.ilike.${pattern},bio.ilike.${pattern}`
+      );
     }
 
-    const avatarUrl = await resolveAvatarUrl(
-      supabase,
-      profile.avatar_asset_id,
-      profile.avatar_url
+    const { data: profiles, error: profilesError } = await withQueryTimer(
+      "discover-users:query",
+      request
     );
 
-    people.push({
-      id: profile.id,
-      username: profile.username,
-      fullName: profile.full_name,
-      bio: profile.bio,
-      avatarUrl,
-      accountVisibility: profile.account_visibility ?? "public",
-      followStatus,
-    });
-  }
+    if (profilesError) {
+      throw new Error(profilesError.message);
+    }
 
-  return {
-    query: cleanQuery,
-    people,
-  };
+    const profileRows = (profiles ?? []) as PublicProfileRow[];
+
+    if (profileRows.length === 0) {
+      return {
+        query: cleanQuery,
+        people: [],
+      };
+    }
+
+    const profileIds = profileRows.map((profile) => profile.id);
+
+    const { data: followRows } = await withQueryTimer(
+      "discover-users:follow-status",
+      supabase
+        .from("user_follows")
+        .select("following_id, status")
+        .eq("follower_id", userId)
+        .in("following_id", profileIds)
+    );
+
+    const followMap = new Map<string, FollowRow>(
+      ((followRows ?? []) as FollowRow[]).map((row) => [row.following_id, row])
+    );
+
+    const avatarUrlMap = await withTimer("discover-users:avatar-resolution", () =>
+      resolveAssetUrlMap(
+        supabase,
+        profileRows.map((profile) => ({
+          key: profile.id,
+          assetId: profile.avatar_asset_id,
+          fallbackUrl: profile.avatar_url,
+        }))
+      )
+    );
+
+    const people: DiscoverPerson[] = [];
+
+    for (const profile of profileRows) {
+      const followRow = followMap.get(profile.id);
+
+      let followStatus: FollowStatus = "not_following";
+
+      if (followRow?.status === "accepted") {
+        followStatus = "following";
+      } else if (followRow?.status === "pending") {
+        followStatus = "requested";
+      }
+
+      people.push({
+        id: profile.id,
+        username: profile.username,
+        fullName: profile.full_name,
+        bio: profile.bio,
+        avatarUrl: avatarUrlMap.get(profile.id) ?? null,
+        accountVisibility: profile.account_visibility ?? "public",
+        followStatus,
+      });
+    }
+
+    return {
+      query: cleanQuery,
+      people,
+    };
+  });
 }

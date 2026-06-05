@@ -62,6 +62,12 @@ export async function getMemoryEngagementMap({
     return map;
   }
 
+  if (summaryError && process.env.NODE_ENV !== "production") {
+    console.warn(
+      `[QueryTimer] get_memory_engagement_summary failed; using fallback engagement queries: ${summaryError.message}`
+    );
+  }
+
   const { data: likes } = await supabase
     .from("memory_likes")
     .select("memory_id, user_id")

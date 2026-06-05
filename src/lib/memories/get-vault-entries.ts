@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createSignedReadUrl } from "@/lib/r2";
+import { withQueryTimer, withTimer } from "@/lib/debug/performance-timer";
 import type { FeedMemory, FeedMemoryMedia } from "@/types/memory";
 
 type SupabaseClient = Awaited<
@@ -46,32 +47,38 @@ export async function getVaultEntries(
     avatarUrl: string | null;
   }
 ): Promise<FeedMemory[]> {
-  const { data: entries, error: entriesError } = await supabase
-    .from("memories")
-    .select(
-      "id, owner_id, title, content, mood, moods, privacy, location_name, tags, entry_date, created_at, updated_at"
-    )
-    .eq("owner_id", userId)
-    .eq("privacy", "vault")
-    .order("created_at", { ascending: false })
-    .limit(50);
+  return withTimer("vault-entries:total", async () => {
+    const { data: entries, error: entriesError } = await withQueryTimer(
+      "vault-entries:query",
+      supabase
+        .from("memories")
+        .select(
+          "id, owner_id, title, content, mood, moods, privacy, location_name, tags, entry_date, created_at, updated_at"
+        )
+        .eq("owner_id", userId)
+        .eq("privacy", "vault")
+        .order("created_at", { ascending: false })
+        .limit(12)
+    );
 
-  if (entriesError) {
-    throw new Error(entriesError.message);
-  }
+    if (entriesError) {
+      throw new Error(entriesError.message);
+    }
 
-  const entryRows = (entries ?? []) as VaultMemoryRow[];
+    const entryRows = (entries ?? []) as VaultMemoryRow[];
 
-  if (entryRows.length === 0) {
-    return [];
-  }
+    if (entryRows.length === 0) {
+      return [];
+    }
 
-  const entryIds = entryRows.map((entry) => entry.id);
+    const entryIds = entryRows.map((entry) => entry.id);
 
-  const { data: memoryMediaRows } = await supabase
-    .from("memory_media")
-    .select(
-      `
+    const { data: memoryMediaRows } = await withQueryTimer(
+      "vault-entries:media",
+      supabase
+        .from("memory_media")
+        .select(
+          `
       memory_id,
       sort_order,
       asset:media_assets (
@@ -83,70 +90,76 @@ export async function getVaultEntries(
         upload_status
       )
     `
-    )
-    .in("memory_id", entryIds)
-    .order("sort_order", { ascending: true });
+        )
+        .in("memory_id", entryIds)
+        .order("sort_order", { ascending: true })
+    );
 
-  const mediaByEntryId = new Map<string, FeedMemoryMedia[]>();
+    const mediaByEntryId = new Map<string, FeedMemoryMedia[]>();
 
-  for (const row of (memoryMediaRows ?? []) as MemoryMediaRow[]) {
-    const asset = Array.isArray(row.asset) ? row.asset[0] : row.asset;
+    await withTimer("vault-entries:signed-urls", async () => {
+      await Promise.all(
+        ((memoryMediaRows ?? []) as MemoryMediaRow[]).map(async (row) => {
+          const asset = Array.isArray(row.asset) ? row.asset[0] : row.asset;
 
-    if (!asset || asset.upload_status !== "uploaded") continue;
+          if (!asset || asset.upload_status !== "uploaded") return;
 
-    let url = asset.public_url;
+          let url = asset.public_url;
 
-    if (!url && asset.object_key) {
-      url = await createSignedReadUrl(asset.object_key);
-    }
+          if (!url && asset.object_key) {
+            url = await createSignedReadUrl(asset.object_key);
+          }
 
-    if (!url) continue;
+          if (!url) return;
 
-    const mediaItem: FeedMemoryMedia = {
-      id: asset.id,
-      url,
-      mimeType: asset.mime_type,
-      mediaKind: asset.media_kind,
-    };
+          const mediaItem: FeedMemoryMedia = {
+            id: asset.id,
+            url,
+            mimeType: asset.mime_type,
+            mediaKind: asset.media_kind,
+          };
 
-    const existing = mediaByEntryId.get(row.memory_id) ?? [];
-    existing.push(mediaItem);
-    mediaByEntryId.set(row.memory_id, existing);
-  }
+          const existing = mediaByEntryId.get(row.memory_id) ?? [];
+          existing.push(mediaItem);
+          mediaByEntryId.set(row.memory_id, existing);
+        })
+      );
+    });
 
-  return entryRows.map((entry) => {
-    const normalizedMoods =
-      entry.moods && entry.moods.length > 0
-        ? entry.moods
-        : entry.mood
-          ? [entry.mood]
-          : [];
+    return entryRows.map((entry) => {
+      const normalizedMoods =
+        entry.moods && entry.moods.length > 0
+          ? entry.moods
+          : entry.mood
+            ? [entry.mood]
+            : [];
 
-    return {
-      id: entry.id,
-      title: entry.title,
-      content: entry.content,
-      mood: entry.mood,
-      moods: normalizedMoods,
-      privacy: "vault",
-      locationName: entry.location_name,
-      tags: entry.tags ?? [],
-      entryDate: entry.entry_date,
-      createdAt: entry.created_at,
-      updatedAt: entry.updated_at,
-      author: {
-        id: userId,
-        fullName: author.fullName,
-        username: author.username,
-        avatarUrl: author.avatarUrl,
-      },
-      media: mediaByEntryId.get(entry.id) ?? [],
-      engagement: {
-        likeCount: 0,
-        reflectionCount: 0,
-        viewerHasLiked: false,
-        canEngage: false,
-      },
-    };
+      return {
+        id: entry.id,
+        title: entry.title,
+        content: entry.content,
+        mood: entry.mood,
+        moods: normalizedMoods,
+        privacy: "vault",
+        locationName: entry.location_name,
+        tags: entry.tags ?? [],
+        entryDate: entry.entry_date,
+        createdAt: entry.created_at,
+        updatedAt: entry.updated_at,
+        author: {
+          id: userId,
+          fullName: author.fullName,
+          username: author.username,
+          avatarUrl: author.avatarUrl,
+        },
+        media: mediaByEntryId.get(entry.id) ?? [],
+        engagement: {
+          likeCount: 0,
+          reflectionCount: 0,
+          viewerHasLiked: false,
+          canEngage: false,
+        },
+      };
+    });
   });
 }

@@ -2,6 +2,8 @@ import "server-only";
 
 import { notFound } from "next/navigation";
 import { createSignedReadUrl } from "@/lib/r2";
+import { withQueryTimer, withTimer } from "@/lib/debug/performance-timer";
+import { resolveAssetUrlMap } from "@/lib/media/resolve-asset-urls";
 import { getMemoryEngagementMap } from "@/lib/memories/get-memory-engagements";
 import type { FeedMemory, FeedMemoryMedia } from "@/types/memory";
 
@@ -86,33 +88,21 @@ export type PublicProfilePageData = {
   memories: FeedMemory[];
 };
 
-async function resolveAssetUrl(
-  supabase: SupabaseClient,
-  assetId: string | null,
-  fallbackUrl: string | null
-) {
-  if (fallbackUrl) return fallbackUrl;
-  if (!assetId) return null;
-
-  const { data: asset } = await supabase
-    .from("media_assets")
-    .select("object_key, public_url, upload_status")
-    .eq("id", assetId)
-    .eq("upload_status", "uploaded")
-    .maybeSingle();
-
-  if (!asset) return null;
-
-  if (asset.public_url) return asset.public_url;
-
-  if (asset.object_key) {
-    return createSignedReadUrl(asset.object_key);
-  }
-
-  return null;
+export async function getPublicProfilePageData({
+  supabase,
+  username,
+  viewerId,
+}: {
+  supabase: SupabaseClient;
+  username: string;
+  viewerId: string;
+}): Promise<PublicProfilePageData> {
+  return withTimer("public-profile:total", () =>
+    getPublicProfilePageDataInner({ supabase, username, viewerId })
+  );
 }
 
-export async function getPublicProfilePageData({
+async function getPublicProfilePageDataInner({
   supabase,
   username,
   viewerId,
@@ -123,13 +113,16 @@ export async function getPublicProfilePageData({
 }): Promise<PublicProfilePageData> {
   const cleanUsername = username.trim().toLowerCase();
 
-  const { data: publicProfile, error: profileError } = await supabase
-    .from("public_profiles")
-    .select(
-      "id, username, full_name, bio, avatar_url, cover_url, avatar_asset_id, cover_asset_id, is_searchable, account_visibility"
-    )
-    .eq("username", cleanUsername)
-    .maybeSingle();
+  const { data: publicProfile, error: profileError } = await withQueryTimer(
+    "profile-page:profile",
+    supabase
+      .from("public_profiles")
+      .select(
+        "id, username, full_name, bio, avatar_url, cover_url, avatar_asset_id, cover_asset_id, is_searchable, account_visibility"
+      )
+      .eq("username", cleanUsername)
+      .maybeSingle()
+  );
 
   if (profileError) {
     throw new Error(profileError.message);
@@ -141,17 +134,23 @@ export async function getPublicProfilePageData({
 
   const profileRow = publicProfile as PublicProfileRow;
 
-  const avatarUrl = await resolveAssetUrl(
-    supabase,
-    profileRow.avatar_asset_id,
-    profileRow.avatar_url
+  const profileAssetUrls = await withTimer("profile-page:media", () =>
+    resolveAssetUrlMap(supabase, [
+      {
+        key: "avatar",
+        assetId: profileRow.avatar_asset_id,
+        fallbackUrl: profileRow.avatar_url,
+      },
+      {
+        key: "cover",
+        assetId: profileRow.cover_asset_id,
+        fallbackUrl: profileRow.cover_url,
+      },
+    ])
   );
 
-  const coverUrl = await resolveAssetUrl(
-    supabase,
-    profileRow.cover_asset_id,
-    profileRow.cover_url
-  );
+  const avatarUrl = profileAssetUrls.get("avatar") ?? null;
+  const coverUrl = profileAssetUrls.get("cover") ?? null;
 
   const isOwner = profileRow.id === viewerId;
 
@@ -169,12 +168,15 @@ export async function getPublicProfilePageData({
   let followStatus: FollowStatus = isOwner ? "self" : "not_following";
 
   if (!isOwner) {
-    const { data: followRow } = await supabase
-      .from("user_follows")
-      .select("status")
-      .eq("follower_id", viewerId)
-      .eq("following_id", profile.id)
-      .maybeSingle();
+    const { data: followRow } = await withQueryTimer(
+      "profile-page:social-counts",
+      supabase
+        .from("user_follows")
+        .select("status")
+        .eq("follower_id", viewerId)
+        .eq("following_id", profile.id)
+        .maybeSingle()
+    );
 
     const typedFollowRow = followRow as FollowRow | null;
 
@@ -190,17 +192,23 @@ export async function getPublicProfilePageData({
     profile.accountVisibility === "public" ||
     followStatus === "following";
 
-  const { count: followersCount } = await supabase
-    .from("user_follows")
-    .select("id", { count: "exact", head: true })
-    .eq("following_id", profile.id)
-    .eq("status", "accepted");
+  const { count: followersCount } = await withQueryTimer(
+    "profile-page:social-counts",
+    supabase
+      .from("user_follows")
+      .select("id", { count: "exact", head: true })
+      .eq("following_id", profile.id)
+      .eq("status", "accepted")
+  );
 
-  const { count: followingCount } = await supabase
-    .from("user_follows")
-    .select("id", { count: "exact", head: true })
-    .eq("follower_id", profile.id)
-    .eq("status", "accepted");
+  const { count: followingCount } = await withQueryTimer(
+    "profile-page:social-counts",
+    supabase
+      .from("user_follows")
+      .select("id", { count: "exact", head: true })
+      .eq("follower_id", profile.id)
+      .eq("status", "accepted")
+  );
 
   const socialStats = {
     followers: followersCount ?? 0,
@@ -226,21 +234,27 @@ export async function getPublicProfilePageData({
     };
   }
 
-  const { count: publicMemoriesCount } = await supabase
-    .from("memories")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", profile.id)
-    .eq("privacy", "public");
+  const { count: publicMemoriesCount } = await withQueryTimer(
+    "profile-page:social-counts",
+    supabase
+      .from("memories")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", profile.id)
+      .eq("privacy", "public")
+  );
 
-  const { data: publicMemories, error: memoriesError } = await supabase
-    .from("memories")
-    .select(
-      "id, owner_id, title, content, mood, moods, privacy, location_name, tags, entry_date, created_at, updated_at"
-    )
-    .eq("owner_id", profile.id)
-    .eq("privacy", "public")
-    .order("created_at", { ascending: false })
-    .limit(24);
+  const { data: publicMemories, error: memoriesError } = await withQueryTimer(
+    "profile-page:memories",
+    supabase
+      .from("memories")
+      .select(
+        "id, owner_id, title, content, mood, moods, privacy, location_name, tags, entry_date, created_at, updated_at"
+      )
+      .eq("owner_id", profile.id)
+      .eq("privacy", "public")
+      .order("created_at", { ascending: false })
+      .limit(12)
+  );
 
   if (memoriesError) {
     throw new Error(memoriesError.message);
@@ -275,10 +289,12 @@ export async function getPublicProfilePageData({
     viewerId,
   });
 
-  const { data: memoryMediaRows } = await supabase
-    .from("memory_media")
-    .select(
-      `
+  const { data: memoryMediaRows } = await withQueryTimer(
+    "profile-page:media",
+    supabase
+      .from("memory_media")
+      .select(
+        `
       memory_id,
       sort_order,
       asset:media_assets (
@@ -290,36 +306,41 @@ export async function getPublicProfilePageData({
         upload_status
       )
     `
-    )
-    .in("memory_id", memoryIds)
-    .order("sort_order", { ascending: true });
+      )
+      .in("memory_id", memoryIds)
+      .order("sort_order", { ascending: true })
+  );
 
   const mediaByMemoryId = new Map<string, FeedMemoryMedia[]>();
 
-  for (const row of (memoryMediaRows ?? []) as MemoryMediaRow[]) {
-    const asset = Array.isArray(row.asset) ? row.asset[0] : row.asset;
+  await withTimer("signed-url-generation", async () => {
+    await Promise.all(
+      ((memoryMediaRows ?? []) as MemoryMediaRow[]).map(async (row) => {
+        const asset = Array.isArray(row.asset) ? row.asset[0] : row.asset;
 
-    if (!asset || asset.upload_status !== "uploaded") continue;
+        if (!asset || asset.upload_status !== "uploaded") return;
 
-    let url = asset.public_url;
+        let url = asset.public_url;
 
-    if (!url && asset.object_key) {
-      url = await createSignedReadUrl(asset.object_key);
-    }
+        if (!url && asset.object_key) {
+          url = await createSignedReadUrl(asset.object_key);
+        }
 
-    if (!url) continue;
+        if (!url) return;
 
-    const mediaItem: FeedMemoryMedia = {
-      id: asset.id,
-      url,
-      mimeType: asset.mime_type,
-      mediaKind: asset.media_kind,
-    };
+        const mediaItem: FeedMemoryMedia = {
+          id: asset.id,
+          url,
+          mimeType: asset.mime_type,
+          mediaKind: asset.media_kind,
+        };
 
-    const existing = mediaByMemoryId.get(row.memory_id) ?? [];
-    existing.push(mediaItem);
-    mediaByMemoryId.set(row.memory_id, existing);
-  }
+        const existing = mediaByMemoryId.get(row.memory_id) ?? [];
+        existing.push(mediaItem);
+        mediaByMemoryId.set(row.memory_id, existing);
+      })
+    );
+  });
 
   const feedMemories = memoryRows.map((memory) => {
     const normalizedMoods =

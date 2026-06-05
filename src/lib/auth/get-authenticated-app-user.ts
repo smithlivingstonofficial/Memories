@@ -3,6 +3,7 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { cacheTags } from "@/lib/cache-tags";
+import { withQueryTimer } from "@/lib/debug/performance-timer";
 import { createClient } from "@/lib/supabase/server";
 
 export type AuthenticatedAppUser = {
@@ -21,17 +22,20 @@ export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser> {
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await withQueryTimer("auth-user", supabase.auth.getUser());
 
   if (!user) {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("username, full_name, avatar_url, profile_completed, password_set")
-    .eq("id", user.id)
-    .maybeSingle();
+  const { data: profile } = await withQueryTimer(
+    "profile-load",
+    supabase
+      .from("profiles")
+      .select("username, full_name, avatar_url, profile_completed, password_set")
+      .eq("id", user.id)
+      .maybeSingle()
+  );
 
   if (!profile?.profile_completed || !profile?.password_set) {
     redirect("/complete-profile");

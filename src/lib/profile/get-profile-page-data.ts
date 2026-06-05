@@ -1,6 +1,8 @@
 import "server-only";
 
 import { createSignedReadUrl } from "@/lib/r2";
+import { withQueryTimer, withTimer } from "@/lib/debug/performance-timer";
+import { resolveAssetUrlMap } from "@/lib/media/resolve-asset-urls";
 import { getMemoryEngagementMap } from "@/lib/memories/get-memory-engagements";
 import type { FeedMemory, FeedMemoryMedia } from "@/types/memory";
 
@@ -86,32 +88,6 @@ export type ProfilePageData = {
   memories: FeedMemory[];
 };
 
-async function resolveAssetUrl(
-  supabase: SupabaseClient,
-  assetId: string | null,
-  fallbackUrl: string | null
-) {
-  if (fallbackUrl) return fallbackUrl;
-  if (!assetId) return null;
-
-  const { data: asset } = await supabase
-    .from("media_assets")
-    .select("object_key, public_url, upload_status")
-    .eq("id", assetId)
-    .eq("upload_status", "uploaded")
-    .maybeSingle();
-
-  if (!asset) return null;
-
-  if (asset.public_url) return asset.public_url;
-
-  if (asset.object_key) {
-    return createSignedReadUrl(asset.object_key);
-  }
-
-  return null;
-}
-
 export async function getProfilePageData({
   supabase,
   userId,
@@ -125,27 +101,54 @@ export async function getProfilePageData({
     avatarUrl: string | null;
   };
 }): Promise<ProfilePageData> {
-  const { data: publicProfile } = await supabase
-    .from("profiles")
-    .select(
-      "id, username, full_name, bio, avatar_url, cover_url, avatar_asset_id, cover_asset_id, is_searchable, account_visibility"
-    )
-    .eq("id", userId)
-    .maybeSingle();
+  return withTimer("profile-page:total", () =>
+    getProfilePageDataInner({ supabase, userId, fallbackProfile })
+  );
+}
+
+async function getProfilePageDataInner({
+  supabase,
+  userId,
+  fallbackProfile,
+}: {
+  supabase: SupabaseClient;
+  userId: string;
+  fallbackProfile: {
+    username: string;
+    fullName: string;
+    avatarUrl: string | null;
+  };
+}): Promise<ProfilePageData> {
+  const { data: publicProfile } = await withQueryTimer(
+    "profile-page:profile",
+    supabase
+      .from("profiles")
+      .select(
+        "id, username, full_name, bio, avatar_url, cover_url, avatar_asset_id, cover_asset_id, is_searchable, account_visibility"
+      )
+      .eq("id", userId)
+      .maybeSingle()
+  );
 
   const profileRow = publicProfile as PublicProfileRow | null;
 
-  const avatarUrl = await resolveAssetUrl(
-    supabase,
-    profileRow?.avatar_asset_id ?? null,
-    profileRow?.avatar_url ?? fallbackProfile.avatarUrl
+  const profileAssetUrls = await withTimer("profile-page:media", () =>
+    resolveAssetUrlMap(supabase, [
+      {
+        key: "avatar",
+        assetId: profileRow?.avatar_asset_id ?? null,
+        fallbackUrl: profileRow?.avatar_url ?? fallbackProfile.avatarUrl,
+      },
+      {
+        key: "cover",
+        assetId: profileRow?.cover_asset_id ?? null,
+        fallbackUrl: profileRow?.cover_url ?? null,
+      },
+    ])
   );
 
-  const coverUrl = await resolveAssetUrl(
-    supabase,
-    profileRow?.cover_asset_id ?? null,
-    profileRow?.cover_url ?? null
-  );
+  const avatarUrl = profileAssetUrls.get("avatar") ?? null;
+  const coverUrl = profileAssetUrls.get("cover") ?? null;
 
   const profile = {
     id: userId,
@@ -159,9 +162,12 @@ export async function getProfilePageData({
   };
 
   const { data: profileSummaryRows, error: profileSummaryError } =
-    await supabase.rpc("get_profile_summary", {
+    await withQueryTimer(
+      "profile-page:social-counts",
+      supabase.rpc("get_profile_summary", {
       target_user: userId,
-    });
+      })
+    );
 
   let summaryRow = !profileSummaryError
     ? ((profileSummaryRows ?? [])[0] as ProfileSummaryRow | undefined)
@@ -235,15 +241,18 @@ export async function getProfilePageData({
     sentRequests: Number(summaryRow.sent_requests_count ?? 0),
   };
 
-  const { data: memories, error: memoriesError } = await supabase
-    .from("memories")
-    .select(
-      "id, owner_id, title, content, mood, moods, privacy, location_name, tags, entry_date, created_at, updated_at"
-    )
-    .eq("owner_id", userId)
-    .neq("privacy", "vault")
-    .order("created_at", { ascending: false })
-    .limit(24);
+  const { data: memories, error: memoriesError } = await withQueryTimer(
+    "profile-page:memories",
+    supabase
+      .from("memories")
+      .select(
+        "id, owner_id, title, content, mood, moods, privacy, location_name, tags, entry_date, created_at, updated_at"
+      )
+      .eq("owner_id", userId)
+      .neq("privacy", "vault")
+      .order("created_at", { ascending: false })
+      .limit(12)
+  );
 
   if (memoriesError) {
     throw new Error(memoriesError.message);
@@ -267,10 +276,12 @@ export async function getProfilePageData({
     viewerId: userId,
   });
 
-  const { data: memoryMediaRows } = await supabase
-    .from("memory_media")
-    .select(
-      `
+  const { data: memoryMediaRows } = await withQueryTimer(
+    "profile-page:media",
+    supabase
+      .from("memory_media")
+      .select(
+        `
       memory_id,
       sort_order,
       asset:media_assets (
@@ -282,36 +293,41 @@ export async function getProfilePageData({
         upload_status
       )
     `
-    )
-    .in("memory_id", memoryIds)
-    .order("sort_order", { ascending: true });
+      )
+      .in("memory_id", memoryIds)
+      .order("sort_order", { ascending: true })
+  );
 
   const mediaByMemoryId = new Map<string, FeedMemoryMedia[]>();
 
-  for (const row of (memoryMediaRows ?? []) as MemoryMediaRow[]) {
-    const asset = Array.isArray(row.asset) ? row.asset[0] : row.asset;
+  await withTimer("signed-url-generation", async () => {
+    await Promise.all(
+      ((memoryMediaRows ?? []) as MemoryMediaRow[]).map(async (row) => {
+        const asset = Array.isArray(row.asset) ? row.asset[0] : row.asset;
 
-    if (!asset || asset.upload_status !== "uploaded") continue;
+        if (!asset || asset.upload_status !== "uploaded") return;
 
-    let url = asset.public_url;
+        let url = asset.public_url;
 
-    if (!url && asset.object_key) {
-      url = await createSignedReadUrl(asset.object_key);
-    }
+        if (!url && asset.object_key) {
+          url = await createSignedReadUrl(asset.object_key);
+        }
 
-    if (!url) continue;
+        if (!url) return;
 
-    const mediaItem: FeedMemoryMedia = {
-      id: asset.id,
-      url,
-      mimeType: asset.mime_type,
-      mediaKind: asset.media_kind,
-    };
+        const mediaItem: FeedMemoryMedia = {
+          id: asset.id,
+          url,
+          mimeType: asset.mime_type,
+          mediaKind: asset.media_kind,
+        };
 
-    const existing = mediaByMemoryId.get(row.memory_id) ?? [];
-    existing.push(mediaItem);
-    mediaByMemoryId.set(row.memory_id, existing);
-  }
+        const existing = mediaByMemoryId.get(row.memory_id) ?? [];
+        existing.push(mediaItem);
+        mediaByMemoryId.set(row.memory_id, existing);
+      })
+    );
+  });
 
   const feedMemories = memoryRows.map((memory) => {
     const normalizedMoods =

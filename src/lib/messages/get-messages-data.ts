@@ -3,7 +3,8 @@
 import "server-only";
 
 import { notFound } from "next/navigation";
-import { createSignedReadUrl } from "@/lib/r2";
+import { withQueryTimer, withTimer } from "@/lib/debug/performance-timer";
+import { resolveAssetUrlMap } from "@/lib/media/resolve-asset-urls";
 
 type SupabaseClient = Awaited<
   ReturnType<typeof import("@/lib/supabase/server").createClient>
@@ -36,6 +37,20 @@ type MessageRow = {
   sender_id: string;
   body: string;
   created_at: string;
+};
+
+type InboxRpcRow = {
+  conversation_id: string;
+  conversation_updated_at: string;
+  other_user_id: string;
+  other_username: string;
+  other_full_name: string;
+  other_avatar_url: string | null;
+  last_message_id: string | null;
+  last_message_body: string | null;
+  last_message_created_at: string | null;
+  last_message_sender_id: string | null;
+  unread_count: number;
 };
 
 export type ConversationListItem = {
@@ -84,31 +99,6 @@ export type MessageThreadData = {
   messages: MessageThreadItem[];
 };
 
-async function resolveAvatarUrl(
-  supabase: SupabaseClient,
-  assetId: string | null,
-  fallbackUrl: string | null
-) {
-  if (fallbackUrl) return fallbackUrl;
-  if (!assetId) return null;
-
-  const { data: asset } = await supabase
-    .from("media_assets")
-    .select("object_key, public_url, upload_status")
-    .eq("id", assetId)
-    .eq("upload_status", "uploaded")
-    .maybeSingle();
-
-  if (!asset) return null;
-  if (asset.public_url) return asset.public_url;
-
-  if (asset.object_key) {
-    return createSignedReadUrl(asset.object_key);
-  }
-
-  return null;
-}
-
 function getDirectKey(userA: string, userB: string) {
   return [userA, userB].sort().join(":");
 }
@@ -122,11 +112,14 @@ async function canStartConversation({
   viewerId: string;
   targetUserId: string;
 }) {
-  const { data: targetProfile } = await supabase
-    .from("public_profiles")
-    .select("id, account_visibility")
-    .eq("id", targetUserId)
-    .maybeSingle();
+  const { data: targetProfile } = await withQueryTimer(
+    "message-thread:participants",
+    supabase
+      .from("public_profiles")
+      .select("id, account_visibility")
+      .eq("id", targetUserId)
+      .maybeSingle()
+  );
 
   if (!targetProfile) return false;
 
@@ -134,13 +127,16 @@ async function canStartConversation({
     return true;
   }
 
-  const { data: acceptedConnection } = await supabase
-    .from("user_follows")
-    .select("id")
-    .or(
-      `and(follower_id.eq.${viewerId},following_id.eq.${targetUserId},status.eq.accepted),and(follower_id.eq.${targetUserId},following_id.eq.${viewerId},status.eq.accepted)`
-    )
-    .maybeSingle();
+  const { data: acceptedConnection } = await withQueryTimer(
+    "message-thread:participants",
+    supabase
+      .from("user_follows")
+      .select("id")
+      .or(
+        `and(follower_id.eq.${viewerId},following_id.eq.${targetUserId},status.eq.accepted),and(follower_id.eq.${targetUserId},following_id.eq.${viewerId},status.eq.accepted)`
+      )
+      .maybeSingle()
+  );
 
   return Boolean(acceptedConnection);
 }
@@ -158,25 +154,33 @@ async function mapProfiles({
     return new Map<string, ConversationListItem["otherUser"]>();
   }
 
-  const { data: profiles } = await supabase
-    .from("public_profiles")
-    .select("id, username, full_name, avatar_url, avatar_asset_id")
-    .in("id", uniqueIds);
+  const { data: profiles } = await withQueryTimer(
+    "messages-inbox:profiles",
+    supabase
+      .from("public_profiles")
+      .select("id, username, full_name, avatar_url, avatar_asset_id")
+      .in("id", uniqueIds)
+  );
 
   const profileMap = new Map<string, ConversationListItem["otherUser"]>();
-
-  for (const profile of (profiles ?? []) as ProfileRow[]) {
-    const avatarUrl = await resolveAvatarUrl(
+  const profileRows = (profiles ?? []) as ProfileRow[];
+  const avatarUrlMap = await withTimer("messages-inbox:avatar-resolution", () =>
+    resolveAssetUrlMap(
       supabase,
-      profile.avatar_asset_id,
-      profile.avatar_url
-    );
+      profileRows.map((profile) => ({
+        key: profile.id,
+        assetId: profile.avatar_asset_id,
+        fallbackUrl: profile.avatar_url,
+      }))
+    )
+  );
 
+  for (const profile of profileRows) {
     profileMap.set(profile.id, {
       id: profile.id,
       username: profile.username,
       fullName: profile.full_name,
-      avatarUrl,
+      avatarUrl: avatarUrlMap.get(profile.id) ?? null,
     });
   }
 
@@ -257,10 +261,62 @@ export async function getMessagesInboxData({
   supabase: SupabaseClient;
   userId: string;
 }): Promise<MessagesInboxData> {
-  const { data: myMemberships } = await supabase
-    .from("conversation_members")
-    .select("conversation_id, user_id, last_read_at")
-    .eq("user_id", userId);
+  return withTimer("messages-inbox:total", async () => {
+    const { data: inboxRows, error: inboxError } = await withQueryTimer(
+      "messages-inbox:conversations",
+      supabase.rpc("get_messages_inbox", { viewer: userId })
+    );
+
+    if (!inboxError && inboxRows) {
+      return {
+        conversations: ((inboxRows ?? []) as InboxRpcRow[]).map((row) => ({
+          id: row.conversation_id,
+          updatedAt: row.conversation_updated_at,
+          unreadCount: Number(row.unread_count ?? 0),
+          otherUser: {
+            id: row.other_user_id,
+            username: row.other_username,
+            fullName: row.other_full_name,
+            avatarUrl: row.other_avatar_url,
+          },
+          lastMessage:
+            row.last_message_id &&
+            row.last_message_body &&
+            row.last_message_created_at
+              ? {
+                  body: row.last_message_body,
+                  createdAt: row.last_message_created_at,
+                  isOwn: row.last_message_sender_id === userId,
+                }
+              : null,
+        })),
+      };
+    }
+
+    if (inboxError && process.env.NODE_ENV !== "production") {
+      console.warn(
+        `[QueryTimer] get_messages_inbox failed; using fallback inbox queries: ${inboxError.message}`
+      );
+    }
+
+    return getMessagesInboxDataFallback({ supabase, userId });
+  });
+}
+
+async function getMessagesInboxDataFallback({
+  supabase,
+  userId,
+}: {
+  supabase: SupabaseClient;
+  userId: string;
+}): Promise<MessagesInboxData> {
+  const { data: myMemberships } = await withQueryTimer(
+    "messages-inbox:memberships",
+    supabase
+      .from("conversation_members")
+      .select("conversation_id, user_id, last_read_at")
+      .eq("user_id", userId)
+  );
 
   const membershipRows = (myMemberships ?? []) as MemberRow[];
 
@@ -276,19 +332,25 @@ export async function getMessagesInboxData({
     membershipRows.map((row) => [row.conversation_id, row.last_read_at])
   );
 
-  const { data: conversations } = await supabase
-    .from("conversations")
-    .select("id, updated_at, created_at")
-    .in("id", conversationIds)
-    .order("updated_at", { ascending: false });
+  const { data: conversations } = await withQueryTimer(
+    "messages-inbox:conversations",
+    supabase
+      .from("conversations")
+      .select("id, updated_at, created_at")
+      .in("id", conversationIds)
+      .order("updated_at", { ascending: false })
+  );
 
   const conversationRows = (conversations ?? []) as ConversationRow[];
 
-  const { data: members } = await supabase
-    .from("conversation_members")
-    .select("conversation_id, user_id, last_read_at")
-    .in("conversation_id", conversationIds)
-    .neq("user_id", userId);
+  const { data: members } = await withQueryTimer(
+    "messages-inbox:memberships",
+    supabase
+      .from("conversation_members")
+      .select("conversation_id, user_id, last_read_at")
+      .in("conversation_id", conversationIds)
+      .neq("user_id", userId)
+  );
 
   const memberRows = (members ?? []) as MemberRow[];
   const otherUserIds = memberRows.map((member) => member.user_id);
@@ -304,12 +366,15 @@ export async function getMessagesInboxData({
     otherUserByConversation.set(member.conversation_id, member.user_id);
   }
 
-  const { data: recentMessages } = await supabase
-    .from("messages")
-    .select("id, conversation_id, sender_id, body, created_at")
-    .in("conversation_id", conversationIds)
-    .order("created_at", { ascending: false })
-    .limit(200);
+  const { data: recentMessages } = await withQueryTimer(
+    "messages-inbox:last-messages",
+    supabase
+      .from("messages")
+      .select("id, conversation_id, sender_id, body, created_at")
+      .in("conversation_id", conversationIds)
+      .order("created_at", { ascending: false })
+      .limit(100)
+  );
 
   const messageRows = (recentMessages ?? []) as MessageRow[];
   const lastMessageByConversation = new Map<string, MessageRow>();
@@ -333,9 +398,10 @@ export async function getMessagesInboxData({
     .in("conversation_id", conversationIds)
     .neq("sender_id", userId);
 
-  const { data: unreadCandidates } = oldestLastReadAt
-    ? await unreadQuery.gt("created_at", oldestLastReadAt)
-    : await unreadQuery;
+  const { data: unreadCandidates } = await withQueryTimer(
+    "messages-inbox:unread-count",
+    oldestLastReadAt ? unreadQuery.gt("created_at", oldestLastReadAt) : unreadQuery
+  );
 
   for (const message of (unreadCandidates ?? []) as Pick<
     MessageRow,
@@ -399,11 +465,14 @@ export async function getMessageThreadDataByUsername({
     notFound();
   }
 
-  const { data: targetProfile } = await supabase
-    .from("public_profiles")
-    .select("id, username, full_name, avatar_url, avatar_asset_id")
-    .eq("username", normalizedUsername)
-    .maybeSingle();
+  const { data: targetProfile } = await withQueryTimer(
+    "message-thread:participants",
+    supabase
+      .from("public_profiles")
+      .select("id, username, full_name, avatar_url, avatar_asset_id")
+      .eq("username", normalizedUsername)
+      .maybeSingle()
+  );
 
   if (!targetProfile) {
     notFound();
@@ -435,80 +504,91 @@ export async function getMessageThreadData({
   userId: string;
   conversationId: string;
 }): Promise<MessageThreadData> {
-  const { data: membership } = await supabase
-    .from("conversation_members")
-    .select("id")
-    .eq("conversation_id", conversationId)
-    .eq("user_id", userId)
-    .maybeSingle();
+  return withTimer("message-thread:total", async () => {
+    const { data: membership } = await withQueryTimer(
+      "message-thread:conversation",
+      supabase
+        .from("conversation_members")
+        .select("id")
+        .eq("conversation_id", conversationId)
+        .eq("user_id", userId)
+        .maybeSingle()
+    );
 
-  if (!membership) {
-    notFound();
-  }
+    if (!membership) {
+      notFound();
+    }
 
-  const { data: members } = await supabase
-    .from("conversation_members")
-    .select("conversation_id, user_id, last_read_at")
-    .eq("conversation_id", conversationId);
+    const { data: members } = await withQueryTimer(
+      "message-thread:participants",
+      supabase
+        .from("conversation_members")
+        .select("conversation_id, user_id, last_read_at")
+        .eq("conversation_id", conversationId)
+    );
 
-  const memberRows = (members ?? []) as MemberRow[];
-  const otherMember = memberRows.find((member) => member.user_id !== userId);
+    const memberRows = (members ?? []) as MemberRow[];
+    const otherMember = memberRows.find((member) => member.user_id !== userId);
 
-  if (!otherMember) {
-    notFound();
-  }
+    if (!otherMember) {
+      notFound();
+    }
 
-  const profileMap = await mapProfiles({
-    supabase,
-    userIds: memberRows.map((member) => member.user_id),
-  });
+    const profileMap = await mapProfiles({
+      supabase,
+      userIds: memberRows.map((member) => member.user_id),
+    });
 
-  const otherUser = profileMap.get(otherMember.user_id);
+    const otherUser = profileMap.get(otherMember.user_id);
 
-  if (!otherUser) {
-    notFound();
-  }
+    if (!otherUser) {
+      notFound();
+    }
 
-  const { data: messages } = await supabase
-    .from("messages")
-    .select("id, conversation_id, sender_id, body, created_at")
-    .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true })
-    .limit(200);
+    const { data: messages } = await withQueryTimer(
+      "message-thread:messages",
+      supabase
+        .from("messages")
+        .select("id, conversation_id, sender_id, body, created_at")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: false })
+        .limit(50)
+    );
 
-  const messageRows = (messages ?? []) as MessageRow[];
+    const messageRows = ((messages ?? []) as MessageRow[]).reverse();
 
-  const otherLastReadTime = otherMember.last_read_at
-    ? new Date(otherMember.last_read_at).getTime()
-    : 0;
+    const otherLastReadTime = otherMember.last_read_at
+      ? new Date(otherMember.last_read_at).getTime()
+      : 0;
 
-  const mappedMessages: MessageThreadItem[] = messageRows.map((message) => {
-    const sender = profileMap.get(message.sender_id);
-    const isOwn = message.sender_id === userId;
-    const messageTime = new Date(message.created_at).getTime();
+    const mappedMessages: MessageThreadItem[] = messageRows.map((message) => {
+      const sender = profileMap.get(message.sender_id);
+      const isOwn = message.sender_id === userId;
+      const messageTime = new Date(message.created_at).getTime();
+
+      return {
+        id: message.id,
+        body: message.body,
+        createdAt: message.created_at,
+        isOwn,
+        readStatus: isOwn
+          ? otherLastReadTime >= messageTime
+            ? "seen"
+            : "sent"
+          : null,
+        sender: sender ?? {
+          id: message.sender_id,
+          username: "memories_user",
+          fullName: "Memories User",
+          avatarUrl: null,
+        },
+      };
+    });
 
     return {
-      id: message.id,
-      body: message.body,
-      createdAt: message.created_at,
-      isOwn,
-      readStatus: isOwn
-        ? otherLastReadTime >= messageTime
-          ? "seen"
-          : "sent"
-        : null,
-      sender: sender ?? {
-        id: message.sender_id,
-        username: "memories_user",
-        fullName: "Memories User",
-        avatarUrl: null,
-      },
+      conversationId,
+      otherUser,
+      messages: mappedMessages,
     };
   });
-
-  return {
-    conversationId,
-    otherUser,
-    messages: mappedMessages,
-  };
 }
