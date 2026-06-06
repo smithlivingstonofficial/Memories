@@ -24,7 +24,7 @@ import { uploadMedia } from "@/lib/media/upload-media";
 import {
   createLocationSuggestion,
   extractJpegGps,
-  prepareImageForUpload,
+  prepareMediaForUpload,
   type MediaGpsLocation,
 } from "@/lib/media/client-media-processing";
 import { Button } from "@/components/ui/button";
@@ -188,14 +188,7 @@ export function CreateVaultScreen({ initialDraft, user }: CreateVaultScreenProps
         const gps = await extractJpegGps(file);
         if (gps) gpsLocations.push(gps);
 
-        const prepared = file.type.startsWith("image/")
-          ? await prepareImageForUpload(file)
-          : {
-              file,
-              originalSize: file.size,
-              optimizedSize: file.size,
-              status: "skipped" as const,
-            };
+        const prepared = await prepareMediaForUpload(file);
 
         const result = await uploadMedia({
           file: prepared.file,
@@ -266,7 +259,7 @@ export function CreateVaultScreen({ initialDraft, user }: CreateVaultScreenProps
   }
 
   return (
-    <div className="-mx-3 w-[calc(100%+1.5rem)] max-w-[1500px] sm:mx-auto sm:w-full lg:h-[calc(100dvh-3rem)] lg:min-h-0">
+    <div className="w-full max-w-[1500px] sm:mx-auto lg:h-[calc(100dvh-3rem)] lg:min-h-0">
       <form
         id="create-vault-entry-form"
         action={formAction}
@@ -290,7 +283,7 @@ export function CreateVaultScreen({ initialDraft, user }: CreateVaultScreenProps
           value={JSON.stringify(uploadedAssets.map((asset) => asset.assetId))}
         />
 
-      <section className="mem-card rounded-[1.2rem] p-3 sm:rounded-[2rem] sm:p-4 lg:shrink-0">
+      <section className="hidden rounded-[1.2rem] p-3 sm:block sm:rounded-[2rem] sm:p-4 lg:shrink-0 mem-card">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <Link
@@ -560,7 +553,7 @@ export function CreateVaultScreen({ initialDraft, user }: CreateVaultScreenProps
         </aside>
       </div>
 
-      <div className="fixed inset-x-2 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] z-40 rounded-[1.2rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-2 shadow-[0_18px_48px_var(--app-shadow)] backdrop-blur-2xl sm:hidden">
+      <div className="fixed inset-x-4 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] z-40 rounded-[1.2rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-2 shadow-[0_18px_48px_var(--app-shadow)] backdrop-blur-2xl sm:hidden">
         <p className="mb-2 px-2 text-center text-[11px] font-semibold text-[var(--app-muted)]">
           Vault - {uploadedAssets.length}/10 media
         </p>

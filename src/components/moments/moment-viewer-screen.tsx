@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
@@ -32,8 +33,9 @@ export function MomentViewerScreen({ data }: MomentViewerScreenProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const { moment, group, viewer, stats, navigation } = data;
-  const firstMedia = moment.media[0];
-  const isVideo = firstMedia?.mediaKind === "video";
+  const [mediaIndex, setMediaIndex] = useState(0);
+  const currentMedia = moment.media[mediaIndex] ?? moment.media[0] ?? null;
+  const isVideo = currentMedia?.mediaKind === "video";
 
   const [progress, setProgress] = useState(0);
   const [touchStart, setTouchStart] = useState<{
@@ -46,15 +48,33 @@ export function MomentViewerScreen({ data }: MomentViewerScreenProps) {
   }, [router]);
 
   const goNext = useCallback(() => {
+    if (mediaIndex < moment.media.length - 1) {
+      setProgress(0);
+      setMediaIndex((current) => current + 1);
+      return;
+    }
+
     if (navigation.nextMomentId) {
       router.push(`/moment/${navigation.nextMomentId}`);
       return;
     }
 
     closeViewer();
-  }, [navigation.nextMomentId, router, closeViewer]);
+  }, [
+    mediaIndex,
+    moment.media.length,
+    navigation.nextMomentId,
+    router,
+    closeViewer,
+  ]);
 
   const goPrevious = useCallback(() => {
+    if (mediaIndex > 0) {
+      setProgress(0);
+      setMediaIndex((current) => current - 1);
+      return;
+    }
+
     if (navigation.previousMomentId) {
       router.push(`/moment/${navigation.previousMomentId}`);
       return;
@@ -66,7 +86,7 @@ export function MomentViewerScreen({ data }: MomentViewerScreenProps) {
       videoRef.current.currentTime = 0;
       void videoRef.current.play();
     }
-  }, [navigation.previousMomentId, router]);
+  }, [mediaIndex, navigation.previousMomentId, router]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -76,6 +96,7 @@ export function MomentViewerScreen({ data }: MomentViewerScreenProps) {
     return () => {
       window.clearTimeout(timeoutId);
     };
+    setMediaIndex(0);
   }, [moment.id]);
 
   useEffect(() => {
@@ -114,7 +135,7 @@ export function MomentViewerScreen({ data }: MomentViewerScreenProps) {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [isVideo, moment.id, goNext]);
+  }, [isVideo, moment.id, mediaIndex, goNext]);
 
   function handleVideoTimeUpdate() {
     const video = videoRef.current;
@@ -127,8 +148,8 @@ export function MomentViewerScreen({ data }: MomentViewerScreenProps) {
   }
 
   function getSegmentProgress(index: number) {
-    if (index < group.currentIndex) return 100;
-    if (index > group.currentIndex) return 0;
+    if (index < mediaIndex) return 100;
+    if (index > mediaIndex) return 0;
     return progress;
   }
 
@@ -189,6 +210,7 @@ export function MomentViewerScreen({ data }: MomentViewerScreenProps) {
 
               <span className="hidden rounded-full bg-[var(--app-surface-strong)] px-3 py-1.5 text-xs font-semibold text-[var(--app-muted)] sm:inline-flex">
                 {group.currentIndex + 1}/{group.totalCount}
+                {moment.media.length > 1 ? ` - ${mediaIndex + 1}/${moment.media.length}` : ""}
               </span>
 
               {viewer.isOwner && (
@@ -218,9 +240,9 @@ export function MomentViewerScreen({ data }: MomentViewerScreenProps) {
 
           <div className="relative bg-slate-950">
             <div className="absolute inset-x-0 top-0 z-30 flex gap-1 p-4">
-              {group.moments.map((item, index) => (
+              {(moment.media.length > 0 ? moment.media : [null]).map((item, index) => (
                 <div
-                  key={item.id}
+                  key={item?.id ?? "empty"}
                   className="h-1 flex-1 overflow-hidden rounded-full bg-white/25"
                 >
                   <div
@@ -231,16 +253,20 @@ export function MomentViewerScreen({ data }: MomentViewerScreenProps) {
               ))}
             </div>
 
-            {firstMedia?.mediaKind === "image" ? (
-              <img
-                src={firstMedia.url}
+            {currentMedia?.mediaKind === "image" ? (
+              <Image
+                src={currentMedia.url}
                 alt={moment.caption ?? "Moment"}
+                width={1400}
+                height={1200}
+                unoptimized
                 className="h-[calc(100vh-210px)] min-h-[520px] w-full object-contain"
               />
-            ) : firstMedia?.mediaKind === "video" ? (
+            ) : currentMedia?.mediaKind === "video" ? (
               <video
                 ref={videoRef}
-                src={firstMedia.url}
+                key={currentMedia.id}
+                src={currentMedia.url}
                 className="h-[calc(100vh-210px)] min-h-[520px] w-full object-contain"
                 controls
                 autoPlay
@@ -258,7 +284,7 @@ export function MomentViewerScreen({ data }: MomentViewerScreenProps) {
               type="button"
               onClick={goPrevious}
               className="absolute bottom-28 left-0 top-20 z-20 flex w-1/2 items-center justify-start px-4 text-white/0 transition hover:text-white/70"
-              aria-label="Previous Moment"
+              aria-label="Previous media"
             >
               <ChevronLeft size={32} />
             </button>
@@ -267,7 +293,7 @@ export function MomentViewerScreen({ data }: MomentViewerScreenProps) {
               type="button"
               onClick={goNext}
               className="absolute bottom-28 right-0 top-20 z-20 flex w-1/2 items-center justify-end px-4 text-white/0 transition hover:text-white/70"
-              aria-label="Next Moment"
+              aria-label="Next media"
             >
               <ChevronRight size={32} />
             </button>
@@ -310,6 +336,12 @@ export function MomentViewerScreen({ data }: MomentViewerScreenProps) {
                   <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white backdrop-blur-xl sm:hidden">
                     {group.currentIndex + 1}/{group.totalCount}
                   </span>
+
+                  {moment.media.length > 1 && (
+                    <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white backdrop-blur-xl">
+                      Media {mediaIndex + 1}/{moment.media.length}
+                    </span>
+                  )}
 
                   <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white backdrop-blur-xl sm:hidden">
                     {formatTimeLeft(moment.expiresAt)}
@@ -359,6 +391,9 @@ export function MomentViewerScreen({ data }: MomentViewerScreenProps) {
             <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
               Viewing {group.currentIndex + 1} of {group.totalCount} active
               Moments from this user.
+              {moment.media.length > 1
+                ? ` This Moment has ${moment.media.length} media items.`
+                : ""}
             </p>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
@@ -455,9 +490,12 @@ function Avatar({
 
   if (avatarUrl) {
     return (
-      <img
+      <Image
         src={avatarUrl}
         alt={fullName}
+        width={96}
+        height={96}
+        unoptimized
         className="size-12 shrink-0 rounded-2xl object-cover"
       />
     );

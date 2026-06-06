@@ -41,7 +41,6 @@ export function LocationMapPicker({
   onCancel,
   onSelect,
 }: LocationMapPickerProps) {
-  const [mounted, setMounted] = useState(false);
   const initialPosition = useMemo<[number, number] | null>(() => {
     if (initialLatitude === null || initialLongitude === null) return null;
     return [initialLatitude, initialLongitude];
@@ -50,10 +49,7 @@ export function LocationMapPicker({
     [number, number] | null
   >(initialPosition);
   const center = initialPosition ?? defaultCenter;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const portalRoot = typeof document === "undefined" ? null : document.body;
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -75,7 +71,7 @@ export function LocationMapPicker({
     });
   }
 
-  if (!mounted) return null;
+  if (!portalRoot) return null;
 
   return createPortal(
     <div className="fixed inset-x-0 bottom-0 top-16 z-[1800] flex items-start justify-center bg-slate-950/72 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-md sm:inset-0 sm:items-center sm:p-4">
@@ -145,7 +141,7 @@ export function LocationMapPicker({
         </div>
       </div>
     </div>,
-    document.body
+    portalRoot
   );
 }
 

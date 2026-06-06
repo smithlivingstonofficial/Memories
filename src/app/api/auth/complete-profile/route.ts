@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
+import { cacheTags } from "@/lib/cache-tags";
 import { createClient } from "@/lib/supabase/server";
 
 function hasGoogleIdentity(user: {
@@ -197,6 +199,8 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    revalidateTag(cacheTags.userProfile(user.id), "max");
 
     return NextResponse.json({
       success: true,

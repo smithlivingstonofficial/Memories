@@ -3,11 +3,18 @@ export type MediaGpsLocation = {
   longitude: number;
 };
 
-export type ImageOptimizationResult = {
+export type MediaOptimizationStatus =
+  | "not_needed"
+  | "optimized"
+  | "skipped"
+  | "failed";
+
+export type MediaPreparationResult = {
   file: File;
   originalSize: number;
   optimizedSize: number;
-  status: "not_needed" | "optimized" | "skipped" | "failed";
+  status: MediaOptimizationStatus;
+  error?: string;
 };
 
 export type LocationSuggestion = {
@@ -22,10 +29,34 @@ const IMAGE_OPTIMIZE_THRESHOLD = 2.5 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 2400;
 const JPEG_QUALITY = 0.86;
 const NEARBY_DISTANCE_METERS = 350;
+const VIDEO_OPTIMIZE_THRESHOLD = 12 * 1024 * 1024;
+const MAX_VIDEO_DIMENSION = 1080;
+let ffmpegInstancePromise: Promise<
+  import("@ffmpeg/ffmpeg").FFmpeg
+> | null = null;
+
+export async function prepareMediaForUpload(
+  file: File
+): Promise<MediaPreparationResult> {
+  if (file.type.startsWith("image/")) {
+    return prepareImageForUpload(file);
+  }
+
+  if (file.type.startsWith("video/")) {
+    return prepareVideoForUpload(file);
+  }
+
+  return {
+    file,
+    originalSize: file.size,
+    optimizedSize: file.size,
+    status: "skipped",
+  };
+}
 
 export async function prepareImageForUpload(
   file: File
-): Promise<ImageOptimizationResult> {
+): Promise<MediaPreparationResult> {
   const originalSize = file.size;
 
   if (!file.type.startsWith("image/") || file.type === "image/gif") {
@@ -102,6 +133,124 @@ export async function prepareImageForUpload(
       status: "failed",
     };
   }
+}
+
+async function prepareVideoForUpload(
+  file: File
+): Promise<MediaPreparationResult> {
+  const originalSize = file.size;
+
+  if (file.size <= VIDEO_OPTIMIZE_THRESHOLD && file.type === "video/mp4") {
+    return {
+      file,
+      originalSize,
+      optimizedSize: file.size,
+      status: "not_needed",
+    };
+  }
+
+  try {
+    const ffmpeg = await getFfmpeg();
+    const { fetchFile } = await import("@ffmpeg/util");
+    const inputName = `input.${getFileExtension(file.name, "video")}`;
+    const outputName = "output.mp4";
+
+    try {
+      await ffmpeg.deleteFile(inputName);
+      await ffmpeg.deleteFile(outputName);
+    } catch {
+      // Files may not exist from a previous run.
+    }
+
+    await ffmpeg.writeFile(inputName, await fetchFile(file));
+    await ffmpeg.exec([
+      "-i",
+      inputName,
+      "-vf",
+      `scale='min(${MAX_VIDEO_DIMENSION},iw)':-2:force_original_aspect_ratio=decrease`,
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "25",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "128k",
+      "-movflags",
+      "+faststart",
+      outputName,
+    ]);
+
+    const output = await ffmpeg.readFile(outputName);
+    const bytes =
+      output instanceof Uint8Array
+        ? output
+        : new TextEncoder().encode(output);
+    const arrayBuffer = new ArrayBuffer(bytes.byteLength);
+    new Uint8Array(arrayBuffer).set(bytes);
+    const blob = new Blob([arrayBuffer], { type: "video/mp4" });
+
+    await ffmpeg.deleteFile(inputName);
+    await ffmpeg.deleteFile(outputName);
+
+    if (!blob || blob.size >= file.size) {
+      return {
+        file,
+        originalSize,
+        optimizedSize: file.size,
+        status: "not_needed",
+      };
+    }
+
+    const baseName = file.name.replace(/\.[^.]+$/, "");
+    const optimizedFile = new File([blob], `${baseName}.mp4`, {
+      type: "video/mp4",
+      lastModified: Date.now(),
+    });
+
+    return {
+      file: optimizedFile,
+      originalSize,
+      optimizedSize: optimizedFile.size,
+      status: "optimized",
+    };
+  } catch (error) {
+    return {
+      file,
+      originalSize,
+      optimizedSize: file.size,
+      status: "failed",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Video compression failed.",
+    };
+  }
+}
+
+async function getFfmpeg() {
+  if (!ffmpegInstancePromise) {
+    ffmpegInstancePromise = (async () => {
+      const { FFmpeg } = await import("@ffmpeg/ffmpeg");
+      const ffmpeg = new FFmpeg();
+
+      await ffmpeg.load({
+        coreURL: "/ffmpeg/ffmpeg-core.js",
+        wasmURL: "/ffmpeg/ffmpeg-core.wasm",
+      });
+
+      return ffmpeg;
+    })();
+  }
+
+  return ffmpegInstancePromise;
+}
+
+function getFileExtension(fileName: string, fallback: string) {
+  const match = fileName.toLowerCase().match(/\.([a-z0-9]+)$/);
+  return match?.[1] ?? fallback;
 }
 
 export async function extractJpegGps(file: File): Promise<MediaGpsLocation | null> {

@@ -18,6 +18,7 @@ import {
   type UpdateProfileState,
 } from "@/app/actions/profile";
 import { deleteUploadedMedia } from "@/lib/media/delete-uploaded-media";
+import { prepareMediaForUpload } from "@/lib/media/client-media-processing";
 import { uploadMedia } from "@/lib/media/upload-media";
 import { Button } from "@/components/ui/button";
 
@@ -76,15 +77,19 @@ export function EditProfileScreen({ initialProfile }: EditProfileScreenProps) {
     file: File,
     purpose: "profile_avatar" | "profile_cover"
   ) {
+    const prepared = await prepareMediaForUpload(file);
     const result = await uploadMedia({
-      file,
+      file: prepared.file,
       purpose,
       visibility: "public",
+      originalFileSize: prepared.originalSize,
+      optimizedFileSize: prepared.optimizedSize,
+      optimizationStatus: prepared.status,
     });
 
     return {
       assetId: result.assetId,
-      previewUrl: URL.createObjectURL(file),
+      previewUrl: URL.createObjectURL(prepared.file),
     };
   }
 

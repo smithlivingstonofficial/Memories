@@ -4,6 +4,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { cacheTags } from "@/lib/cache-tags";
 import { withQueryTimer } from "@/lib/debug/performance-timer";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export type AuthenticatedAppUser = {
@@ -14,9 +15,27 @@ export type AuthenticatedAppUser = {
   avatarUrl: string | null;
 };
 
+async function getCachedAppProfile(userId: string) {
+  "use cache";
+  cacheLife("max");
+  cacheTag(cacheTags.userProfile(userId));
+
+  const supabase = createAdminClient();
+  const { data: profile } = await withQueryTimer(
+    "profile-load",
+    supabase
+      .from("profiles")
+      .select("username, full_name, avatar_url, profile_completed, password_set")
+      .eq("id", userId)
+      .maybeSingle()
+  );
+
+  return profile;
+}
+
 export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser> {
   "use cache: private";
-  cacheLife({ stale: 120, revalidate: 300, expire: 900 });
+  cacheLife({ stale: 300, revalidate: 3600, expire: 86400 });
 
   const supabase = await createClient();
 
@@ -28,20 +47,11 @@ export async function getAuthenticatedAppUser(): Promise<AuthenticatedAppUser> {
     redirect("/login");
   }
 
-  const { data: profile } = await withQueryTimer(
-    "profile-load",
-    supabase
-      .from("profiles")
-      .select("username, full_name, avatar_url, profile_completed, password_set")
-      .eq("id", user.id)
-      .maybeSingle()
-  );
+  const profile = await getCachedAppProfile(user.id);
 
   if (!profile?.profile_completed || !profile?.password_set) {
     redirect("/complete-profile");
   }
-
-  cacheTag(cacheTags.userProfile(user.id));
 
   return {
     id: user.id,

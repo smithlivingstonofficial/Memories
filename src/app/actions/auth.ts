@@ -3,8 +3,10 @@
 "use server";
 
 import { headers } from "next/headers";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { cacheTags } from "@/lib/cache-tags";
 import { createClient } from "@/lib/supabase/server";
 
 /* -------------------------------------------------------------------------- */
@@ -253,6 +255,8 @@ export async function completeProfileAction(
         message: profileError.message || "Unable to complete profile setup.",
       };
     }
+
+    updateTag(cacheTags.userProfile(user.id));
   } catch (error) {
     return {
       message:

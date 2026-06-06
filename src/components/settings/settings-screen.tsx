@@ -6,6 +6,7 @@ import {
   ChevronRight,
   KeyRound,
   LockKeyhole,
+  LogOut,
   Monitor,
   Moon,
   Palette,
@@ -17,6 +18,7 @@ import {
   useTheme,
   type ThemePreference,
 } from "@/components/theme/theme-provider";
+import { logoutAction } from "@/app/actions/auth";
 import { cn } from "@/lib/utils";
 
 type SettingsScreenProps = {
@@ -150,6 +152,16 @@ export function SettingsScreen({ profile }: SettingsScreenProps) {
               }
             />
           </div>
+
+          <form action={logoutAction} className="mt-4">
+            <button
+              type="submit"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 text-sm font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-rose-500/15 active:scale-[0.99] dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/15"
+            >
+              <LogOut size={17} />
+              Logout
+            </button>
+          </form>
         </div>
       </aside>
     </div>

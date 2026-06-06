@@ -27,7 +27,7 @@ import { uploadMedia } from "@/lib/media/upload-media";
 import {
   createLocationSuggestion,
   extractJpegGps,
-  prepareImageForUpload,
+  prepareMediaForUpload,
   type MediaGpsLocation,
 } from "@/lib/media/client-media-processing";
 import {
@@ -141,14 +141,7 @@ export function EditMemoryScreen({
         const gps = await extractJpegGps(file);
         if (gps) gpsLocations.push(gps);
 
-        const prepared = file.type.startsWith("image/")
-          ? await prepareImageForUpload(file)
-          : {
-              file,
-              originalSize: file.size,
-              optimizedSize: file.size,
-              status: "skipped" as const,
-            };
+        const prepared = await prepareMediaForUpload(file);
 
         const result = await uploadMedia({
           file: prepared.file,
@@ -231,7 +224,7 @@ export function EditMemoryScreen({
   }
 
   return (
-    <div className="-mx-3 w-[calc(100%+1.5rem)] max-w-[1500px] sm:mx-auto sm:w-full lg:h-[calc(100dvh-3rem)] lg:min-h-0">
+    <div className="w-full max-w-[1500px] sm:mx-auto lg:h-[calc(100dvh-3rem)] lg:min-h-0">
       <form
         action={formAction}
         className="space-y-3 pb-[13rem] sm:space-y-4 sm:pb-0 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:space-y-4 lg:overflow-hidden"
@@ -259,7 +252,7 @@ export function EditMemoryScreen({
           value={JSON.stringify(uploadedAssets.map((asset) => asset.assetId))}
         />
 
-      <section className="mem-card rounded-[1.2rem] p-3 sm:rounded-[2rem] sm:p-4 lg:shrink-0">
+      <section className="hidden rounded-[1.2rem] p-3 sm:block sm:rounded-[2rem] sm:p-4 lg:shrink-0 mem-card">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <Link
@@ -559,7 +552,7 @@ export function EditMemoryScreen({
         </aside>
       </div>
 
-      <div className="fixed inset-x-2 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] z-40 rounded-[1.2rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-2 shadow-[0_18px_48px_var(--app-shadow)] backdrop-blur-2xl sm:hidden">
+      <div className="fixed inset-x-4 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] z-40 rounded-[1.2rem] border border-[var(--app-border)] bg-[var(--app-surface)] p-2 shadow-[0_18px_48px_var(--app-shadow)] backdrop-blur-2xl sm:hidden">
         <p className="mb-2 px-2 text-center text-[11px] font-semibold text-[var(--app-muted)]">
           {isVault ? "Vault" : selectedPrivacy?.label ?? "Private"} - {mediaCount}/10 media
         </p>
